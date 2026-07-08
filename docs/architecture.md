@@ -1,6 +1,6 @@
-# Heavy Reasoning Agent Template Architecture
+# DeepReason Agents Framework Architecture
 
-This template is local-first. The deterministic coordinator lets tests and starter projects run without API keys, while `runtime.create_deep_agent_runtime` can opt into Deep Agents when `runtime.prefer_deepagents` is true and the dependency is installed.
+DeepReason Agents Framework is local-first. The deterministic coordinator lets tests and starter projects run without API keys, while `runtime.create_deep_agent_runtime` can opt into Deep Agents when `runtime.prefer_deepagents` is true and the dependency is installed.
 
 The OpenClaude reference is distilled as architecture, not copied source. See
 `docs/openclaude-distillation.md` for the keep/plugin/leave-out map and the
