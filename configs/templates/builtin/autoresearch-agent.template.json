@@ -1,0 +1,1020 @@
+{
+  "agents": {
+    "agents": [
+      {
+        "description": "负责接收研究目标、判断任务复杂度，并协调研究型工作流推进。",
+        "handoff_contract": {
+          "output": "normalized research goal and execution context"
+        },
+        "id": "coordinator",
+        "label": "协调器",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "planner",
+        "permissions": {},
+        "responsibilities": [
+          "识别研究目标和边界",
+          "选择证据工作流",
+          "协调各 Agent 交付"
+        ],
+        "tools": [
+          "workflow_status"
+        ],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": [
+          "intake",
+          "act_or_answer",
+          "respond"
+        ]
+      },
+      {
+        "description": "生成可审计的研究计划、检索策略和节点交付要求。",
+        "handoff_contract": {
+          "output": "research plan with evidence requirements"
+        },
+        "id": "planner",
+        "label": "规划器",
+        "memory_access": [
+          "short_term:read"
+        ],
+        "model_role": "planner",
+        "permissions": {},
+        "responsibilities": [
+          "拆解研究问题",
+          "定义检索范围",
+          "规划证据和审查节点"
+        ],
+        "tools": [],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": [
+          "plan"
+        ]
+      },
+      {
+        "description": "从本地知识库、论文、网页和用户经验中收集证据候选。",
+        "handoff_contract": {
+          "output": "ranked evidence candidates"
+        },
+        "id": "retriever",
+        "label": "检索器",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "worker",
+        "permissions": {},
+        "responsibilities": [
+          "RAG 检索",
+          "外部证据检索",
+          "证据归一化"
+        ],
+        "tools": [
+          "retrieve_knowledge",
+          "external_search"
+        ],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": [
+          "retrieve"
+        ]
+      },
+      {
+        "description": "基于证据、记忆和研究计划生成分析草案。",
+        "handoff_contract": {
+          "output": "evidence-grounded reasoning draft"
+        },
+        "id": "reasoner",
+        "label": "推理器",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "worker",
+        "permissions": {},
+        "responsibilities": [
+          "综合证据",
+          "生成分析草案",
+          "标注不确定性"
+        ],
+        "tools": [],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": [
+          "reason"
+        ]
+      },
+      {
+        "description": "审查证据绑定、门禁结果和输出一致性。",
+        "handoff_contract": {
+          "output": "audit notes and gate recommendation"
+        },
+        "id": "critic",
+        "label": "审查器",
+        "memory_access": [
+          "short_term:read"
+        ],
+        "model_role": "critic",
+        "permissions": {},
+        "responsibilities": [
+          "证据审计",
+          "门禁审查",
+          "验证输出"
+        ],
+        "tools": [],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": [
+          "evidence_audit",
+          "gate",
+          "verify"
+        ]
+      },
+      {
+        "description": "提出长期记忆和知识沉淀候选，不直接修改保护资产。",
+        "handoff_contract": {
+          "output": "memory and evidence consolidation proposals"
+        },
+        "id": "memory",
+        "label": "记忆管理",
+        "memory_access": [
+          "short_term:read",
+          "long_term:proposal"
+        ],
+        "model_role": "worker",
+        "permissions": {
+          "direct_apply": false
+        },
+        "responsibilities": [
+          "整理短期上下文",
+          "生成长期记忆候选",
+          "生成证据沉淀提案"
+        ],
+        "tools": [
+          "memory_proposal_writer"
+        ],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": [
+          "consolidate"
+        ]
+      },
+      {
+        "description": "复核 Coordinator 的难度、风险、证据需求和工作流选择。",
+        "handoff_contract": {
+          "output": "routing review decision"
+        },
+        "id": "reviewer",
+        "label": "路由复核",
+        "memory_access": [
+          "short_term:read"
+        ],
+        "model_role": "critic",
+        "permissions": {},
+        "responsibilities": [
+          "复核路由",
+          "升级证据需求",
+          "记录审查理由"
+        ],
+        "tools": [],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": []
+      },
+      {
+        "description": "通过自然语言帮助用户生成 Agent、Workflow、技能和验收测试草稿。",
+        "handoff_contract": {
+          "output": "agents and workflow draft"
+        },
+        "id": "configurator",
+        "label": "配置助手",
+        "memory_access": [
+          "short_term:read"
+        ],
+        "model_role": "planner",
+        "permissions": {
+          "direct_apply": false
+        },
+        "responsibilities": [
+          "理解用户目标",
+          "生成多 Agent 草稿",
+          "推荐工作流节点",
+          "生成验收测试"
+        ],
+        "tools": [
+          "agents_draft",
+          "workflow_draft",
+          "config_schema"
+        ],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": []
+      },
+      {
+        "description": "只负责应用已批准的代码或配置修改，不参与普通对话、检索、记忆或推理。",
+        "handoff_contract": {
+          "output": "approved diff application result"
+        },
+        "id": "code_modifier",
+        "label": "代码修改器",
+        "memory_access": [],
+        "model_role": "worker",
+        "permissions": {
+          "allowed_paths": [
+            "src/",
+            "tests/",
+            "configs/"
+          ],
+          "direct_apply": false
+        },
+        "responsibilities": [
+          "应用已批准提案",
+          "限制修改路径",
+          "运行验证命令"
+        ],
+        "tools": [
+          "opencode:code-modifier"
+        ],
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "workflow_nodes": []
+      },
+      {
+        "description": "研究项目负责人，负责把用户问题变成可执行的研究范围、假设和评价标准。",
+        "handoff_contract": {
+          "input": "user goal and context",
+          "output": "research scope, assumptions, acceptance criteria"
+        },
+        "id": "research_lead",
+        "label": "研究负责人",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "planner",
+        "permissions": {
+          "direct_apply": false
+        },
+        "responsibilities": [
+          "定义研究问题",
+          "拆解变量和边界",
+          "确定证据质量要求"
+        ],
+        "tools": [
+          "workflow_draft",
+          "retrieve_knowledge"
+        ],
+        "ui": {
+          "builder_visible": true,
+          "template_role": "research"
+        },
+        "workflow_nodes": [
+          "research_plan"
+        ]
+      },
+      {
+        "description": "文献和资料检索 Agent，负责构造检索式、调用 RAG/外部检索并过滤低质量来源。",
+        "handoff_contract": {
+          "input": "research scope",
+          "output": "literature search notes and ranked evidence candidates"
+        },
+        "id": "literature_retriever",
+        "label": "文献检索员",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "worker",
+        "permissions": {
+          "external_call": "gate_required"
+        },
+        "responsibilities": [
+          "构造检索式",
+          "检索论文和知识库",
+          "过滤低质量资料"
+        ],
+        "tools": [
+          "retrieve_knowledge",
+          "external_search",
+          "rag_lab"
+        ],
+        "ui": {
+          "builder_visible": true,
+          "template_role": "research"
+        },
+        "workflow_nodes": [
+          "literature_search"
+        ]
+      },
+      {
+        "description": "证据综合 Agent，负责比较来源、提取共识和冲突，并维护证据缺口。",
+        "handoff_contract": {
+          "input": "ranked evidence candidates",
+          "output": "evidence synthesis matrix with gaps"
+        },
+        "id": "evidence_synthesizer",
+        "label": "证据综合员",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "worker",
+        "permissions": {},
+        "responsibilities": [
+          "比较证据来源",
+          "提取一致结论和冲突结论",
+          "维护证据缺口"
+        ],
+        "tools": [
+          "evidence_ledger",
+          "cite"
+        ],
+        "ui": {
+          "builder_visible": true,
+          "template_role": "research"
+        },
+        "workflow_nodes": [
+          "evidence_synthesis"
+        ]
+      },
+      {
+        "description": "方法审查 Agent，负责审查研究方法、因果链、统计或实验假设是否足够稳健。",
+        "handoff_contract": {
+          "input": "reasoning draft and evidence matrix",
+          "output": "method review notes and revision requests"
+        },
+        "id": "method_reviewer",
+        "label": "方法审查员",
+        "memory_access": [
+          "short_term:read"
+        ],
+        "model_role": "critic",
+        "permissions": {},
+        "responsibilities": [
+          "审查方法假设",
+          "识别过度外推",
+          "提出修正要求"
+        ],
+        "tools": [
+          "evidence_audit"
+        ],
+        "ui": {
+          "builder_visible": true,
+          "template_role": "research"
+        },
+        "workflow_nodes": [
+          "method_review"
+        ]
+      },
+      {
+        "description": "研究报告 Agent，负责把通过门禁的内容整理成可读、可引用、可复查的研究输出。",
+        "handoff_contract": {
+          "input": "verified analysis and references",
+          "output": "research report draft"
+        },
+        "id": "report_writer",
+        "label": "研究报告员",
+        "memory_access": [
+          "short_term:read",
+          "long_term:read"
+        ],
+        "model_role": "worker",
+        "permissions": {},
+        "responsibilities": [
+          "组织研究结论",
+          "保留不确定性",
+          "生成参考文献索引"
+        ],
+        "tools": [
+          "cite",
+          "export_markdown"
+        ],
+        "ui": {
+          "builder_visible": true,
+          "template_role": "research"
+        },
+        "workflow_nodes": [
+          "research_report"
+        ]
+      }
+    ],
+    "name": "autoresearch-agents",
+    "protected_agents": [
+      "coordinator",
+      "planner",
+      "retriever",
+      "reasoner",
+      "critic",
+      "memory",
+      "reviewer",
+      "configurator",
+      "code_modifier"
+    ],
+    "revision": "builtin-autoresearch-v1",
+    "version": "1.0"
+  },
+  "created_at": "2026-07-08T00:00:00Z",
+  "description": "内置研究型多 Agent 模板，适合论文调研、材料/技术问题分析、证据优先的研究报告生成。",
+  "id": "autoresearch-agent",
+  "label": "AutoResearch Agent",
+  "tags": [
+    "research",
+    "rag",
+    "evidence",
+    "multi-agent"
+  ],
+  "version": "1.0",
+  "workflow": {
+    "edges": [
+      {
+        "condition": "normalized goal",
+        "from": "intake",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "routing + normalized_goal"
+        },
+        "id": "intake_to_plan",
+        "planner_contract": {},
+        "reviewer_required": true,
+        "to": "plan",
+        "type": "flow"
+      },
+      {
+        "condition": "research scope required",
+        "from": "plan",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "normalized_goal + routing + evidence_policy"
+        },
+        "id": "plan_to_research_plan",
+        "planner_contract": {
+          "required_output": "research_scope"
+        },
+        "reviewer_required": true,
+        "to": "research_plan",
+        "type": "flow"
+      },
+      {
+        "condition": "search strategy ready",
+        "from": "research_plan",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "research_scope + search_queries"
+        },
+        "id": "research_plan_to_literature_search",
+        "planner_contract": {
+          "required_output": "search_plan"
+        },
+        "reviewer_required": false,
+        "to": "literature_search",
+        "type": "flow"
+      },
+      {
+        "condition": "evidence candidates collected",
+        "from": "literature_search",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "ranked_sources + retrieval_notes"
+        },
+        "id": "literature_search_to_evidence_synthesis",
+        "planner_contract": {
+          "required_output": "evidence_matrix"
+        },
+        "reviewer_required": false,
+        "to": "evidence_synthesis",
+        "type": "flow"
+      },
+      {
+        "condition": "evidence matrix ready",
+        "from": "evidence_synthesis",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "evidence_matrix + gaps"
+        },
+        "id": "evidence_synthesis_to_method_review",
+        "planner_contract": {
+          "required_output": "method_review_input"
+        },
+        "reviewer_required": true,
+        "to": "method_review",
+        "type": "flow"
+      },
+      {
+        "condition": "method reviewed",
+        "from": "method_review",
+        "gate_policy": {
+          "requires_evidence": true,
+          "risk": "dynamic"
+        },
+        "handoff_contract": {
+          "payload": "method_review_notes + revision_requests"
+        },
+        "id": "method_review_to_research_report",
+        "planner_contract": {
+          "required_output": "report_outline"
+        },
+        "reviewer_required": true,
+        "to": "research_report",
+        "type": "flow"
+      },
+      {
+        "condition": "research report drafted",
+        "from": "research_report",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "report_draft + reference_index"
+        },
+        "id": "research_report_to_evidence_audit",
+        "planner_contract": {},
+        "reviewer_required": true,
+        "to": "evidence_audit",
+        "type": "flow"
+      },
+      {
+        "condition": "evidence required",
+        "from": "plan",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "plan_to_retrieve",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "retrieve",
+        "type": "branch"
+      },
+      {
+        "condition": "routine path",
+        "from": "plan",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "plan_to_reason",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "reason",
+        "type": "branch"
+      },
+      {
+        "condition": "evidence context",
+        "from": "retrieve",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "retrieve_to_reason",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "reason",
+        "type": "flow"
+      },
+      {
+        "condition": "claim audit",
+        "from": "reason",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "reason_to_evidence_audit",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "evidence_audit",
+        "type": "flow"
+      },
+      {
+        "condition": "draft needs method review",
+        "from": "reason",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "reasoning_draft + evidence_context"
+        },
+        "id": "reason_to_method_review",
+        "planner_contract": {
+          "required_output": "method_review_notes"
+        },
+        "reviewer_required": true,
+        "to": "method_review",
+        "type": "flow"
+      },
+      {
+        "condition": "audit result",
+        "from": "evidence_audit",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "evidence_audit_to_gate",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "gate",
+        "type": "flow"
+      },
+      {
+        "condition": "evidence gap",
+        "from": "evidence_audit",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "evidence_audit_to_retrieve",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "retrieve",
+        "type": "retry"
+      },
+      {
+        "condition": "gate decision",
+        "from": "gate",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "gate_to_act_or_answer",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "act_or_answer",
+        "type": "flow"
+      },
+      {
+        "condition": "gate blocked",
+        "from": "gate",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "gate_to_retrieve",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "retrieve",
+        "type": "retry"
+      },
+      {
+        "condition": "answer/action",
+        "from": "act_or_answer",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "act_or_answer_to_verify",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "verify",
+        "type": "flow"
+      },
+      {
+        "condition": "verified output",
+        "from": "verify",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "verify_to_consolidate",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "consolidate",
+        "type": "flow"
+      },
+      {
+        "condition": "research report formatting",
+        "from": "verify",
+        "gate_policy": {},
+        "handoff_contract": {
+          "payload": "verified_output + references"
+        },
+        "id": "verify_to_research_report",
+        "planner_contract": {
+          "required_output": "research_report_draft"
+        },
+        "reviewer_required": false,
+        "to": "research_report",
+        "type": "flow"
+      },
+      {
+        "condition": "verification failed",
+        "from": "verify",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "verify_to_reason",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "reason",
+        "type": "revise"
+      },
+      {
+        "condition": "publishable result",
+        "from": "consolidate",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "consolidate_to_respond",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "respond",
+        "type": "flow"
+      },
+      {
+        "condition": "proposal audit",
+        "from": "consolidate",
+        "gate_policy": {},
+        "handoff_contract": {},
+        "id": "consolidate_to_evidence_audit",
+        "planner_contract": {},
+        "reviewer_required": false,
+        "to": "evidence_audit",
+        "type": "loop"
+      }
+    ],
+    "name": "autoresearch-workflow",
+    "nodes": [
+      {
+        "agent": "coordinator",
+        "checkpoint": false,
+        "description": "接收研究问题，建立运行上下文和风险边界。",
+        "gate_policy": {},
+        "handler": "intake",
+        "handler_kind": "builtin",
+        "id": "intake",
+        "input_contract": "用户研究问题",
+        "label": "接收",
+        "output_contract": "规范化研究目标",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "规范化用户目标，形成难度、风险、证据需求和工作流上下文。"
+      },
+      {
+        "agent": "planner",
+        "checkpoint": false,
+        "description": "生成可审计的研究计划。",
+        "gate_policy": {},
+        "handler": "plan",
+        "handler_kind": "builtin",
+        "id": "plan",
+        "input_contract": "规范化研究目标",
+        "label": "计划",
+        "output_contract": "研究计划步骤",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "根据路由和 reviewer 审查生成可执行研究计划。"
+      },
+      {
+        "agent": "research_lead",
+        "checkpoint": true,
+        "description": "把研究问题转成可执行范围、变量、假设和验收标准。",
+        "gate_policy": {
+          "reviewer_required": true
+        },
+        "handler": "passthrough",
+        "handler_kind": "builtin",
+        "id": "research_plan",
+        "input_contract": "规范化研究目标、风险等级、证据策略",
+        "label": "研究规划",
+        "output_contract": "研究范围、核心变量、假设、检索式、验收标准",
+        "ui": {
+          "builder_visible": true,
+          "template_node": "autoresearch"
+        },
+        "work": "定义研究范围、关键变量、证据阈值和报告验收标准。"
+      },
+      {
+        "agent": "literature_retriever",
+        "checkpoint": true,
+        "description": "构造检索式，联用 RAG、论文、网页和用户经验来源。",
+        "gate_policy": {
+          "external_call": "gate_required",
+          "requires_evidence": true
+        },
+        "handler": "passthrough",
+        "handler_kind": "builtin",
+        "id": "literature_search",
+        "input_contract": "研究范围与检索式",
+        "label": "文献检索",
+        "output_contract": "候选文献、知识库片段、检索诊断、低质量来源过滤记录",
+        "ui": {
+          "builder_visible": true,
+          "template_node": "autoresearch"
+        },
+        "work": "围绕研究问题检索知识库、论文和可信网页，并记录检索策略与召回缺口。"
+      },
+      {
+        "agent": "retriever",
+        "checkpoint": true,
+        "description": "执行底座证据检索并写入 evidence ledger。",
+        "gate_policy": {},
+        "handler": "retrieve",
+        "handler_kind": "builtin",
+        "id": "retrieve",
+        "input_contract": "检索计划",
+        "label": "底座检索",
+        "output_contract": "证据候选",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "按证据策略检索 RAG、论文、网页或用户经验证据。"
+      },
+      {
+        "agent": "evidence_synthesizer",
+        "checkpoint": true,
+        "description": "把检索结果整理成证据矩阵，标记共识、冲突和缺口。",
+        "gate_policy": {
+          "requires_evidence": true
+        },
+        "handler": "passthrough",
+        "handler_kind": "builtin",
+        "id": "evidence_synthesis",
+        "input_contract": "候选文献、知识库片段、外部证据、用户经验",
+        "label": "证据综合",
+        "output_contract": "证据矩阵、共识结论、冲突结论、证据缺口",
+        "ui": {
+          "builder_visible": true,
+          "template_node": "autoresearch"
+        },
+        "work": "比较不同来源，提取支持/反驳/不确定证据，并维护证据缺口。"
+      },
+      {
+        "agent": "reasoner",
+        "checkpoint": false,
+        "description": "基于证据生成分析草案。",
+        "gate_policy": {},
+        "handler": "reason",
+        "handler_kind": "builtin",
+        "id": "reason",
+        "input_contract": "证据矩阵与研究计划",
+        "label": "推理",
+        "output_contract": "分析草案",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "基于当前证据、记忆和计划生成答案草案。"
+      },
+      {
+        "agent": "method_reviewer",
+        "checkpoint": true,
+        "description": "审查方法假设、因果链、统计/实验解释和过度外推。",
+        "gate_policy": {
+          "requires_evidence": true,
+          "reviewer_required": true
+        },
+        "handler": "review_note",
+        "handler_kind": "builtin",
+        "id": "method_review",
+        "input_contract": "分析草案、证据矩阵、方法假设",
+        "label": "方法审查",
+        "output_contract": "方法审查记录、修正要求、放行/打回建议",
+        "ui": {
+          "builder_visible": true,
+          "template_node": "autoresearch"
+        },
+        "work": "审查推理链、方法假设和证据外推边界，必要时打回补证据。"
+      },
+      {
+        "agent": "report_writer",
+        "checkpoint": true,
+        "description": "整理研究输出，形成带参考文献索引的报告草稿。",
+        "gate_policy": {
+          "requires_evidence": true
+        },
+        "handler": "passthrough",
+        "handler_kind": "builtin",
+        "id": "research_report",
+        "input_contract": "通过审查的分析草案、方法审查记录、证据矩阵",
+        "label": "研究报告",
+        "output_contract": "研究报告草稿、结论边界、参考文献索引",
+        "ui": {
+          "builder_visible": true,
+          "template_node": "autoresearch"
+        },
+        "work": "把审查通过的分析整理成研究报告，保留不确定性和参考文献索引。"
+      },
+      {
+        "agent": "critic",
+        "checkpoint": true,
+        "description": "检查关键结论是否绑定证据。",
+        "gate_policy": {},
+        "handler": "evidence_audit",
+        "handler_kind": "builtin",
+        "id": "evidence_audit",
+        "input_contract": "分析草案或研究报告草稿",
+        "label": "证据审计",
+        "output_contract": "证据审计结果",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "审计草案和证据状态，记录不足与合格证据。"
+      },
+      {
+        "agent": "critic",
+        "checkpoint": true,
+        "description": "执行风险、证据和审批门禁。",
+        "gate_policy": {
+          "approval_action": "answer",
+          "risk": "dynamic"
+        },
+        "handler": "gate",
+        "handler_kind": "builtin",
+        "id": "gate",
+        "input_contract": "证据审计结果",
+        "label": "门禁",
+        "output_contract": "门禁决策",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "根据风险、证据和审批策略作出 allow/interrupt/deny。"
+      },
+      {
+        "agent": "coordinator",
+        "checkpoint": false,
+        "description": "根据门禁结果行动或回答。",
+        "gate_policy": {},
+        "handler": "act_or_answer",
+        "handler_kind": "builtin",
+        "id": "act_or_answer",
+        "input_contract": "门禁决策",
+        "label": "行动/回答",
+        "output_contract": "可发布结果",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "在门禁允许时发布答案，阻断时返回受限状态。"
+      },
+      {
+        "agent": "critic",
+        "checkpoint": true,
+        "description": "验证状态、证据和输出一致性。",
+        "gate_policy": {},
+        "handler": "verify",
+        "handler_kind": "builtin",
+        "id": "verify",
+        "input_contract": "可发布结果",
+        "label": "验证",
+        "output_contract": "验证记录",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "检查输出、门禁和证据状态是否一致。"
+      },
+      {
+        "agent": "memory",
+        "checkpoint": true,
+        "description": "只生成记忆/证据沉淀候选，不直接写保护资产。",
+        "gate_policy": {},
+        "handler": "consolidate",
+        "handler_kind": "builtin",
+        "id": "consolidate",
+        "input_contract": "验证记录",
+        "label": "沉淀",
+        "output_contract": "沉淀候选",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "把合格证据生成可审查沉淀提案，不直接改长期记忆或技能。"
+      },
+      {
+        "agent": "coordinator",
+        "checkpoint": false,
+        "description": "输出最终答案和调试遥测。",
+        "gate_policy": {},
+        "handler": "respond",
+        "handler_kind": "builtin",
+        "id": "respond",
+        "input_contract": "沉淀候选",
+        "label": "响应",
+        "output_contract": "最终响应",
+        "ui": {
+          "builder_hidden": true,
+          "system_scaffold": true
+        },
+        "work": "输出最终答案、参考文献索引和调试 payload。"
+      }
+    ],
+    "protected_nodes": [
+      "intake",
+      "plan",
+      "retrieve",
+      "reason",
+      "evidence_audit",
+      "gate",
+      "act_or_answer",
+      "verify",
+      "consolidate",
+      "respond"
+    ],
+    "revision": "builtin-autoresearch-v1",
+    "start_node": "intake",
+    "terminal_nodes": [
+      "respond"
+    ],
+    "version": "1.0"
+  }
+}

@@ -192,6 +192,45 @@ protected 表示底座角色，默认不能直接删除。原因是这些角色�
 - proposal 让修改可审查、可回滚、可测试。
 - code_modifier 只能应用已批准提案，避免普通对话 Agent 自己改系统。
 
+### 5.4 Agent 模板库
+
+`Agent 模板库` 是源码级内置能力，不只是文档示例。它把一套 Agent Spec 和一套 Workflow Spec 打包成可复用模板。
+
+默认内置：
+
+```text
+configs/templates/builtin/autoresearch-agent.template.json
+```
+
+这套模板叫 `AutoResearch Agent`，面向研究型任务，包含：
+
+- `research_lead`：定义研究范围、变量、假设和验收标准。
+- `literature_retriever`：构造检索式并联用 RAG、论文、网页和用户经验。
+- `evidence_synthesizer`：整理证据矩阵、共识、冲突和缺口。
+- `method_reviewer`：审查方法假设、因果链和过度外推。
+- `report_writer`：生成带参考文献索引的研究报告草稿。
+
+使用流程：
+
+```text
+选择 AutoResearch Agent
+  -> 加载到草稿
+  -> 审查多 Agent 和工作流节点
+  -> 保存草稿
+  -> 生成提案
+  -> 批准应用
+```
+
+`加载到草稿` 只会写入 draft，不会直接替换正式 spec。这样做的意义是：模板可以作为开发起点，但每个项目仍然需要人工检查 Agent 权限、节点门禁、交付契约和代码修改范围。
+
+保存自己的模板时，默认写入：
+
+```text
+configs/templates/user/
+```
+
+这个目录默认不提交到 git，适合保存你的私有项目模板。如果某个模板已经稳定、适合开源复用，再移动到 `configs/templates/builtin/` 并补测试。
+
 ## 6. 工作流点线图
 
 工作流图来自：

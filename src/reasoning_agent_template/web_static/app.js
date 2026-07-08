@@ -11,6 +11,8 @@
   agentSpecPayload: null,
   agentEditMode: false,
   agentProposal: null,
+  templatePayload: null,
+  selectedTemplateId: "autoresearch-agent",
   chatMode: "chat",
   ragLab: { query: "", methods: ["bm25", "semantic", "graph"], result: null, error: "" },
 };
@@ -169,6 +171,7 @@ function renderWorkingHint(payload) {
 function renderAgents(agents) {
   const displayAgents = agentDisplayList(agents);
   $("agentsList").innerHTML = `
+    ${renderTemplateLibrary()}
     ${renderAgentsEditor()}
     ${displayAgents
     .map((agent) => {
@@ -236,6 +239,64 @@ function agentCountLabel(payload) {
     return `${designCount} 个设计 / ${protectedCount} 个底座`;
   }
   return `${agents.length} 个草稿`;
+}
+
+function renderTemplateLibrary() {
+  const payload = state.templatePayload;
+  const templates = payload?.templates || [];
+  const selectedId = state.selectedTemplateId || templates[0]?.id || "";
+  const selected = templates.find((item) => item.id === selectedId) || templates[0];
+  if (!payload) {
+    return `
+      <article class="agent-row template-library">
+        <header>
+          <h3>Agent 模板库</h3>
+          <button type="button" class="secondary" data-template-action="refresh">加载模板</button>
+        </header>
+        <p>模板库会同时管理 Agent Spec 和 Workflow Spec，适合保存多轮开发中的稳定设计。</p>
+      </article>
+    `;
+  }
+  return `
+    <article class="agent-row template-library">
+      <header>
+        <h3>Agent 模板库 <span class="badge ${templates.length ? "completed" : "idle"}">${escapeHtml(templates.length)} 套</span></h3>
+        <button type="button" class="secondary" data-template-action="refresh">刷新</button>
+      </header>
+      <div class="template-controls">
+        <label>快速切换
+          <select id="templateSelect">
+            ${templates
+              .map(
+                (item) => `
+                  <option value="${escapeHtml(item.id)}" ${item.id === selectedId ? "selected" : ""}>
+                    ${escapeHtml(item.label || item.id)} · ${escapeHtml(item.source || "template")}
+                  </option>
+                `,
+              )
+              .join("")}
+          </select>
+        </label>
+        <button type="button" data-template-action="apply" ${selected ? "" : "disabled"}>加载到草稿</button>
+      </div>
+      ${
+        selected
+          ? `
+        <p>${escapeHtml(selected.description || "")}</p>
+        <p class="mono">${escapeHtml(selected.id)} | ${escapeHtml(selected.source)} | Agent ${escapeHtml(selected.agents_count || 0)} / 节点 ${escapeHtml(selected.workflow_nodes_count || 0)}</p>
+      `
+          : `<p class="empty">暂无模板。可以先保存当前设计为用户模板。</p>`
+      }
+      <div class="template-save-form">
+        <label>模板 ID<input id="templateSaveId" placeholder="例如 my-research-v1"></label>
+        <label>显示名称<input id="templateSaveLabel" placeholder="例如 我的研究 Agent v1"></label>
+        <label class="span-2">说明<input id="templateSaveDescription" placeholder="记录这个模板适合什么任务、有哪些边界"></label>
+        <button type="button" data-template-action="save">保存当前为模板</button>
+      </div>
+      <p class="mono">内置目录: ${escapeHtml(payload.paths?.builtin || "")}</p>
+      <p class="mono">用户目录: ${escapeHtml(payload.paths?.user || "")}</p>
+    </article>
+  `;
 }
 
 function renderAgentsEditor() {
@@ -461,7 +522,7 @@ function renderCytoscapeWorkflowGraph(container, workflow, options = {}) {
           order: index,
           agent: node.agent || "-",
           effect,
-          displayLabel: `${workflowNodeLabel(node.id)}\n${node.agent || "-"}`,
+          displayLabel: `${node.label || workflowNodeLabel(node.id)}\n${node.agent || "-"}`,
           status,
           description: node.description || "",
           input: node.input || "",
@@ -1632,6 +1693,18 @@ async function loadAgentSpec({ render = false } = {}) {
   return state.agentSpecPayload;
 }
 
+async function loadTemplates({ render = false } = {}) {
+  state.templatePayload = await api("/api/templates");
+  const ids = new Set((state.templatePayload.templates || []).map((item) => item.id));
+  if (!ids.has(state.selectedTemplateId)) {
+    state.selectedTemplateId = ids.has("autoresearch-agent")
+      ? "autoresearch-agent"
+      : state.templatePayload.templates?.[0]?.id || "";
+  }
+  if (render && state.payload) renderStatus(state.payload);
+  return state.templatePayload;
+}
+
 function setWorkflowDraft(spec) {
   state.workflowSpecPayload = state.workflowSpecPayload || {};
   state.workflowSpecPayload.draft = spec;
@@ -1649,6 +1722,77 @@ function setAgentDraft(spec, validation = null) {
   state.agentSpecPayload.draft = spec;
   state.agentSpecPayload.validation = validation || state.agentSpecPayload.validation || { ok: false, errors: [], warnings: ["草稿尚未保存校验"] };
   if (state.payload) renderStatus(state.payload);
+}
+
+function templateSlug(value) {
+  const ascii = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  if (/^[a-z]/.test(ascii)) return ascii;
+  return `template-${Date.now().toString(36)}`;
+}
+
+function currentTemplateAgentsSpec() {
+  const spec = editableAgentsSpec();
+  return state.agentEditMode ? updateSelectedAgentObject(spec) : spec;
+}
+
+function currentTemplateWorkflowSpec() {
+  const spec = editableWorkflowSpec(state.payload || {});
+  return state.workflowEditMode ? updateSelectedWorkflowObject(spec) : spec;
+}
+
+async function applySelectedTemplate() {
+  const templateId = $("templateSelect")?.value || state.selectedTemplateId;
+  if (!templateId) return;
+  const payload = await api("/api/templates/apply", {
+    method: "POST",
+    body: JSON.stringify({ template_id: templateId }),
+  });
+  state.selectedTemplateId = templateId;
+  state.agentSpecPayload = payload.agents;
+  state.workflowSpecPayload = payload.workflow;
+  state.agentEditMode = true;
+  state.workflowEditMode = true;
+  state.agentProposal = null;
+  state.workflowProposal = null;
+  state.selectedAgentName = chooseGeneratedAgent(payload.agents.spec);
+  state.selectedWorkflowElement = chooseGeneratedWorkflowNode(payload.workflow.spec);
+  appendMessage("agent", `已加载模板“${payload.template?.label || templateId}”到 Agent/Workflow 草稿。请人工检查后再生成提案并批准应用。`);
+  await refreshStatus();
+}
+
+async function saveCurrentTemplate() {
+  const label = $("templateSaveLabel")?.value.trim() || "未命名 Agent 模板";
+  const templateId = $("templateSaveId")?.value.trim() || templateSlug(label);
+  const description = $("templateSaveDescription")?.value.trim() || "从调试台保存的 Agent/Workflow 草稿。";
+  const payload = await api("/api/templates/save", {
+    method: "POST",
+    body: JSON.stringify({
+      template_id: templateId,
+      label,
+      description,
+      agents: currentTemplateAgentsSpec(),
+      workflow: currentTemplateWorkflowSpec(),
+    }),
+  });
+  state.selectedTemplateId = payload.template?.id || templateId;
+  await loadTemplates();
+  appendMessage("agent", `已保存模板“${payload.template?.label || label}”。之后可以在模板库里快速切换。`);
+  renderStatus(state.payload || {});
+}
+
+async function handleTemplateAction(action) {
+  try {
+    if (action === "refresh") return loadTemplates({ render: true });
+    if (action === "apply") return applySelectedTemplate();
+    if (action === "save") return saveCurrentTemplate();
+  } catch (error) {
+    appendMessage("agent", `模板库错误: ${error.message}`);
+  }
 }
 
 function updateSelectedAgentObject(spec) {
@@ -2135,7 +2279,7 @@ function appendMessage(role, text) {
 }
 
 async function refreshStatus() {
-  const [payload] = await Promise.all([api("/api/status"), loadWorkflowSpec(), loadAgentSpec()]);
+  const [payload] = await Promise.all([api("/api/status"), loadWorkflowSpec(), loadAgentSpec(), loadTemplates()]);
   renderStatus(payload);
 }
 
@@ -2206,10 +2350,22 @@ document.addEventListener("submit", (event) => {
     submitRagQuery(event);
   }
 });
+document.addEventListener("change", (event) => {
+  if (event.target?.id === "templateSelect") {
+    state.selectedTemplateId = event.target.value;
+    if (state.payload) renderStatus(state.payload);
+  }
+});
 document.querySelectorAll("[data-chat-mode]").forEach((button) => {
   button.addEventListener("click", () => setChatMode(button.dataset.chatMode));
 });
 document.addEventListener("click", (event) => {
+  const templateButton = event.target.closest("[data-template-action]");
+  if (templateButton) {
+    event.preventDefault();
+    handleTemplateAction(templateButton.dataset.templateAction);
+    return;
+  }
   const agentSelect = event.target.closest("[data-agent-select]");
   if (agentSelect) {
     state.selectedAgentName = agentSelect.dataset.agentSelect;

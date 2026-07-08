@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
+from reasoning_agent_template.agent_templates import AgentTemplateStore
 from reasoning_agent_template.agents_spec import AgentsSpec, AgentsSpecStore
 from reasoning_agent_template.code_modifier import CodeModifierAdapter, LocalWorkflowSpecCodeModifier
 from reasoning_agent_template.config import load_agent_config
@@ -59,6 +60,7 @@ def _make_handler(
 ) -> type[BaseHTTPRequestHandler]:
     workflow_store = WorkflowSpecStore(workspace, orchestrator.config.runtime)
     agents_store = AgentsSpecStore(workspace, orchestrator.config.runtime)
+    template_store = AgentTemplateStore(workspace, orchestrator.config.runtime)
     code_modifier = code_modifier_adapter or LocalWorkflowSpecCodeModifier(workspace)
 
     class DebugHandler(BaseHTTPRequestHandler):
@@ -80,6 +82,9 @@ def _make_handler(
                 return
             if path == "/api/agents/spec":
                 self._send_json(_agents_spec_payload(agents_store, workflow_store))
+                return
+            if path == "/api/templates":
+                self._send_json(_template_list_payload(template_store))
                 return
             if path == "/api/skills":
                 skills = SkillRegistry(workspace / "skills").load()
@@ -180,6 +185,52 @@ def _make_handler(
                     self._send_json(payload, status=200 if result.status == "applied" else 409)
                 except Exception as exc:
                     self._send_json({"error": str(exc), "type": type(exc).__name__}, status=500)
+                return
+            if path == "/api/templates/apply":
+                try:
+                    body = self._read_json()
+                    template_id = str(body.get("template_id") or body.get("id") or "").strip()
+                    if not template_id:
+                        self._send_json({"error": "template_id is required"}, status=400)
+                        return
+                    self._send_json(
+                        template_store.apply_template_to_drafts(
+                            template_id,
+                            agents_store=agents_store,
+                            workflow_store=workflow_store,
+                        )
+                    )
+                except Exception as exc:
+                    self._send_json({"error": str(exc), "type": type(exc).__name__}, status=400)
+                return
+            if path == "/api/templates/save":
+                try:
+                    body = self._read_json()
+                    template_id = str(body.get("template_id") or body.get("id") or "").strip()
+                    if not template_id:
+                        self._send_json({"error": "template_id is required"}, status=400)
+                        return
+                    workflow = (
+                        WorkflowSpec.from_dict(dict(body["workflow"]))
+                        if body.get("workflow")
+                        else workflow_store.load_draft() or workflow_store.load()
+                    )
+                    agents = (
+                        AgentsSpec.from_dict(dict(body["agents"]))
+                        if body.get("agents")
+                        else agents_store.load_draft() or agents_store.load()
+                    )
+                    template = template_store.save_template(
+                        template_id=template_id,
+                        label=str(body.get("label") or template_id),
+                        description=str(body.get("description") or ""),
+                        tags=[str(item) for item in body.get("tags", [])] if isinstance(body.get("tags"), list) else [],
+                        agents=agents,
+                        workflow=workflow,
+                    )
+                    self._send_json({"status": "saved", "template": template})
+                except Exception as exc:
+                    self._send_json({"error": str(exc), "type": type(exc).__name__}, status=400)
                 return
             if path == "/api/configurator/agents":
                 try:
@@ -344,6 +395,16 @@ def _make_handler(
             self.wfile.write(data)
 
     return DebugHandler
+
+
+def _template_list_payload(store: AgentTemplateStore) -> dict[str, Any]:
+    return {
+        "templates": store.list_templates(),
+        "paths": {
+            "builtin": str(store.builtin_dir),
+            "user": str(store.user_dir),
+        },
+    }
 
 
 def _workflow_spec_payload(store: WorkflowSpecStore) -> dict[str, Any]:

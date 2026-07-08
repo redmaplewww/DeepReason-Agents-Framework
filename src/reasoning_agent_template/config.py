@@ -87,6 +87,8 @@ class AgentConfig:
                 "agents_spec": "configs/agents/default.agents.json",
                 "agents_draft": "configs/agents/default.agents.draft.json",
                 "agents_proposal_dir": "configs/agents/proposals",
+                "template_builtin_dir": "configs/templates/builtin",
+                "template_user_dir": "configs/templates/user",
                 "code_modifier": {"mode": "local_spec"},
             },
             workspace_root=Path(workspace_root),

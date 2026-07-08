@@ -69,6 +69,8 @@
         "agents_spec": { "type": "string" },
         "agents_draft": { "type": "string" },
         "agents_proposal_dir": { "type": "string" },
+        "template_builtin_dir": { "type": "string" },
+        "template_user_dir": { "type": "string" },
         "code_modifier": {
           "type": "object",
           "properties": {

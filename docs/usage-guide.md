@@ -149,6 +149,32 @@ python -m reasoning_agent_template rag-eval --cases configs/rag_benchmark_cases.
 5. 审查 diff。
 6. 批准应用。
 
+## 6.1 使用内置 Agent 模板起步
+
+如果你不想从零描述架构，可以先用源码库内置模板。
+
+内置模板文件：
+
+```text
+configs/templates/builtin/autoresearch-agent.template.json
+```
+
+Web 使用流程：
+
+```text
+Agent 模板库
+  -> 选择 AutoResearch Agent
+  -> 加载到草稿
+  -> 人工审查 Agent 和 Workflow
+  -> 保存草稿
+  -> 生成提案
+  -> 批准应用
+```
+
+`AutoResearch Agent` 适合作为研究型、多证据、多审查任务的起点。它已经预置研究负责人、文献检索员、证据综合员、方法审查员和研究报告员，同时保留底座的 coordinator、planner、retriever、critic、memory、reviewer、configurator 和 code_modifier。
+
+保存自己的模板时，调试台会写入 `configs/templates/user/`。该目录默认不提交到 git，适合多轮开发时保存私有版本。
+
 ## 7. 编辑工作流
 
 工作流节点字段：

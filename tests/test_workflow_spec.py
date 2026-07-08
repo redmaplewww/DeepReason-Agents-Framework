@@ -3,8 +3,9 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from urllib import request
+from urllib import error, request
 
+from reasoning_agent_template.agent_templates import AgentTemplateStore
 from reasoning_agent_template.agents_spec import AgentsSpec, AgentsSpecStore
 from reasoning_agent_template.code_modifier import LocalWorkflowSpecCodeModifier
 from reasoning_agent_template.config import AgentConfig
@@ -14,6 +15,135 @@ from reasoning_agent_template.web import create_server
 
 
 class WorkflowSpecTests(unittest.TestCase):
+    def test_builtin_autoresearch_template_loads_and_validates(self):
+        store = AgentTemplateStore(
+            Path("."),
+            {
+                "template_builtin_dir": "configs/templates/builtin",
+                "template_user_dir": "configs/templates/user",
+            },
+        )
+
+        templates = store.list_templates()
+        template = store.load_template("autoresearch-agent")
+        workflow_agents = {node.agent for node in template.workflow.nodes if node.agent}
+        agents_validation = template.agents.validate(workflow_agent_ids=workflow_agents)
+        workflow_validation = template.workflow.validate()
+
+        self.assertIn("autoresearch-agent", {item["id"] for item in templates})
+        self.assertIn("AutoResearch", template.label)
+        self.assertTrue(agents_validation.ok, agents_validation.to_dict())
+        self.assertTrue(workflow_validation.ok, workflow_validation.to_dict())
+        self.assertIn("research_lead", {agent.id for agent in template.agents.agents})
+        self.assertIn("research_plan", {node.id for node in template.workflow.nodes})
+        self.assertIn("research_report", {node.id for node in template.workflow.nodes})
+
+    def test_template_api_apply_writes_agents_and_workflow_drafts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "agent.yaml").write_text(
+                Path("agent.yaml").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            (root / "knowledge").mkdir()
+            builtin_dir = root / "configs" / "templates" / "builtin"
+            builtin_dir.mkdir(parents=True)
+            (builtin_dir / "autoresearch-agent.template.json").write_text(
+                Path("configs/templates/builtin/autoresearch-agent.template.json").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            server = create_server(host="127.0.0.1", port=0, config_path=root / "agent.yaml", workspace_root=root)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_address[1]}"
+            try:
+                templates = _get_json(f"{base_url}/api/templates")
+                applied = _post_json(f"{base_url}/api/templates/apply", {"template_id": "autoresearch-agent"})
+                agents_draft_exists = (root / "configs" / "agents" / "default.agents.draft.json").exists()
+                workflow_draft_exists = (root / "configs" / "workflows" / "default.workflow.draft.json").exists()
+            finally:
+                server.shutdown()
+                server.server_close()
+
+        agent_ids = {agent["id"] for agent in applied["agents"]["spec"]["agents"]}
+        node_ids = {node["id"] for node in applied["workflow"]["spec"]["nodes"]}
+        self.assertIn("autoresearch-agent", {item["id"] for item in templates["templates"]})
+        self.assertEqual(applied["status"], "drafted")
+        self.assertTrue(agents_draft_exists)
+        self.assertTrue(workflow_draft_exists)
+        self.assertIn("research_lead", agent_ids)
+        self.assertIn("research_report", node_ids)
+        self.assertTrue(applied["agents"]["validation"]["ok"], applied["agents"]["validation"])
+        self.assertTrue(applied["workflow"]["validation"]["ok"], applied["workflow"]["validation"])
+
+    def test_template_api_save_current_design_creates_user_template_and_can_reapply(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "agent.yaml").write_text(
+                Path("agent.yaml").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            (root / "knowledge").mkdir()
+            server = create_server(host="127.0.0.1", port=0, config_path=root / "agent.yaml", workspace_root=root)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_address[1]}"
+            try:
+                saved = _post_json(
+                    f"{base_url}/api/templates/save",
+                    {
+                        "template_id": "my-research-v1",
+                        "label": "My Research V1",
+                        "description": "Saved local research design.",
+                        "agents": AgentsSpec.default().to_dict(),
+                        "workflow": WorkflowSpec.default().to_dict(),
+                    },
+                )
+                templates = _get_json(f"{base_url}/api/templates")
+                applied = _post_json(f"{base_url}/api/templates/apply", {"template_id": "my-research-v1"})
+                template_file_exists = (root / "configs" / "templates" / "user" / "my-research-v1.template.json").exists()
+            finally:
+                server.shutdown()
+                server.server_close()
+
+        self.assertEqual(saved["status"], "saved")
+        self.assertEqual(saved["template"]["source"], "user")
+        self.assertTrue(template_file_exists)
+        self.assertIn("my-research-v1", {item["id"] for item in templates["templates"]})
+        self.assertEqual(applied["status"], "drafted")
+        self.assertTrue(applied["agents"]["validation"]["ok"], applied["agents"]["validation"])
+        self.assertTrue(applied["workflow"]["validation"]["ok"], applied["workflow"]["validation"])
+
+    def test_template_api_rejects_unsafe_template_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "agent.yaml").write_text(
+                Path("agent.yaml").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            (root / "knowledge").mkdir()
+            server = create_server(host="127.0.0.1", port=0, config_path=root / "agent.yaml", workspace_root=root)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_address[1]}"
+            try:
+                save_status, save_error = _post_json_expect_error(
+                    f"{base_url}/api/templates/save",
+                    {"template_id": "../x", "label": "bad"},
+                )
+                apply_status, apply_error = _post_json_expect_error(
+                    f"{base_url}/api/templates/apply",
+                    {"template_id": "../x"},
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+
+        self.assertEqual(save_status, 400)
+        self.assertEqual(apply_status, 400)
+        self.assertIn("invalid template id", save_error["error"])
+        self.assertIn("invalid template id", apply_error["error"])
+
     def test_default_agents_spec_validates_and_protects_core_agents(self):
         base = AgentsSpec.default()
         data = base.to_dict()
@@ -408,6 +538,16 @@ def _post_json(url: str, body: dict):
     data = json.dumps(body).encode("utf-8")
     req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
     return json.loads(request.urlopen(req, timeout=10).read().decode("utf-8"))
+
+
+def _post_json_expect_error(url: str, body: dict):
+    data = json.dumps(body).encode("utf-8")
+    req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        request.urlopen(req, timeout=10)
+    except error.HTTPError as exc:
+        return exc.code, json.loads(exc.read().decode("utf-8"))
+    raise AssertionError("request unexpectedly succeeded")
 
 
 class _FakeConfiguratorClient:

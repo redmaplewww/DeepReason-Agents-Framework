@@ -84,6 +84,7 @@ flowchart LR
 | 多 Agent 编排 | `src/reasoning_agent_template/multiagent.py` | 负责路由、调用 LLM、推进工作流、收集调试 telemetry。 |
 | Agent Spec | `configs/agents/default.agents.json`, `agents_spec.py` | 定义角色、职责、工具、权限、记忆访问和绑定节点。 |
 | Workflow Spec | `configs/workflows/default.workflow.json`, `workflow_spec.py` | 定义节点、连线、handler、gate、handoff contract 和 checkpoint。 |
+| Agent 模板库 | `configs/templates/builtin/`, `agent_templates.py` | 内置可复用 Agent/Workflow 模板；当前内置 `AutoResearch Agent`，支持保存用户模板并快速切换到草稿。 |
 | 证据系统 | `src/reasoning_agent_template/models.py`, `evidence/ledger.jsonl` | 归一化 evidence item，记录 source、span、hash、confidence 和引用关系。 |
 | 门禁系统 | `src/reasoning_agent_template/gates.py` | 对回答、文件写入、记忆写入、技能更新、命令执行等动作做 allow/interrupt/deny。 |
 | RAG / 知识库 | `src/reasoning_agent_template/knowledge.py` | 本地文档 ingest、chunk、BM25、语义近似、Graph 检索、Wiki fallback。 |
@@ -167,6 +168,18 @@ reasoning-agent web
 deepreason-agent web
 ```
 
+### 5. 使用内置 AutoResearch Agent 模板
+
+Web 调试台顶部的 `Agent 模板库` 已内置 `AutoResearch Agent`：
+
+1. 打开 `http://127.0.0.1:8767/`。
+2. 在 `Agent 模板库` 选择 `AutoResearch Agent`。
+3. 点击 `加载到草稿`，系统会同时写入 `configs/agents/*.draft.json` 和 `configs/workflows/*.draft.json`。
+4. 在 `多 Agent` 和 `工作流` 面板人工审查 Agent、节点、连线、门禁和交付契约。
+5. 点击 `保存草稿 -> 生成提案 -> 批准应用`，由 `code_modifier` 应用到正式 spec。
+
+也可以把当前设计保存成自己的模板。用户模板默认写入 `configs/templates/user/`，该目录已被 `.gitignore` 排除，避免把私有项目结构误推到开源仓库。
+
 ## RAG 与证据调试
 
 把 `.md`、`.txt`、`.json` 文档放进 `knowledge/`，重启服务或重新查询后即可被本地知识库扫描。默认配置：
@@ -244,7 +257,8 @@ python -m reasoning_agent_template web --host 127.0.0.1 --port 8767
 ## 目录结构
 
 ```text
-configs/                    Agent、workflow、schema、RAG benchmark 配置
+configs/                    Agent、workflow、schema、RAG benchmark、内置模板配置
+configs/templates/builtin/  随源码发布的 Agent 模板，例如 AutoResearch Agent
 docs/                       架构、使用、RAG、工作流和测试报告
 docs/assets/                README 和文档截图
 evidence/                   evidence ledger，运行产物默认不建议提交

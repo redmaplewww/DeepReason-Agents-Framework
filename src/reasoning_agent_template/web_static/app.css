@@ -650,6 +650,63 @@ button:disabled {
   background: #fbfbff;
 }
 
+.template-library {
+  border-color: rgba(20, 163, 154, 0.26);
+  background: #f7fffd;
+}
+
+.template-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 9px;
+}
+
+.template-controls label,
+.template-save-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.template-save-form {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.72fr) minmax(150px, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  align-items: end;
+}
+
+.template-save-form .span-2 {
+  grid-column: 1 / -1;
+}
+
+.template-library input,
+.template-library select {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 9px;
+}
+
+.template-library button {
+  min-height: 32px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
 .agent-editor-actions,
 .workflow-editor-actions,
 .workflow-editor-toolbar {
@@ -1194,7 +1251,9 @@ button:disabled {
   .monitor-layout,
   .workflow-selection-grid,
   .agent-edit-grid,
-  .workflow-edit-grid {
+  .workflow-edit-grid,
+  .template-controls,
+  .template-save-form {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
