@@ -1,6 +1,6 @@
 # DeepReason Agents Framework 使用指南
 
-这份指南说明如何把 DeepReason Agents Framework 当成一个可二开的重推理 Agent 框架使用，而不是只当作演示项目运行。
+这份指南说明如何把 DeepReason Agents Framework 当成一个可二开的重推理 Agent 框架使用，而不是只当作演示项目运行。更完整的界面说明、功能区说明和学习路径见 [用户手册与学习手册](user-manual.md)。
 
 ## 1. 运行方式
 

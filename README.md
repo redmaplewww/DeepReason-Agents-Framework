@@ -249,6 +249,7 @@ tests/                      单元测试、API 测试、工作流测试
 ## 进一步阅读
 
 - [完整使用指南](docs/usage-guide.md)
+- [用户手册与学习手册](docs/user-manual.md)
 - [工作流编辑器使用说明](docs/workflow-editor-usage.md)
 - [架构说明](docs/architecture.md)
 - [RAG 索引指南](docs/rag-indexing-guide.md)
