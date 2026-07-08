@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeepReason Usage Cards</title>
+    <style>
+      :root {
+        --ink: #162033;
+        --muted: #66758f;
+        --line: #cdd8e6;
+        --line-strong: #91a4bd;
+        --panel: #ffffff;
+        --paper: #f5f8fb;
+        --teal: #12877f;
+        --teal-soft: #e5f7f4;
+        --blue: #3f66d6;
+        --blue-soft: #edf2ff;
+        --amber: #b7791f;
+        --amber-soft: #fff6df;
+        --green: #2f8f46;
+        --green-soft: #eaf8ee;
+        --red: #b64242;
+        --red-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #dfe7f1;
+        color: var(--ink);
+        font-family:
+          "Microsoft YaHei",
+          "PingFang SC",
+          "Noto Sans CJK SC",
+          Arial,
+          sans-serif;
+      }
+
+      .card {
+        width: 960px;
+        height: 540px;
+        margin: 0 0 24px;
+        padding: 26px 30px 24px;
+        background:
+          linear-gradient(rgba(37, 67, 98, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(37, 67, 98, 0.045) 1px, transparent 1px),
+          var(--paper);
+        background-size: 28px 28px;
+        border: 1px solid #d7e0ec;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .kicker {
+        color: var(--teal);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0;
+        margin-bottom: 6px;
+      }
+
+      h1 {
+        font-size: 30px;
+        line-height: 1.15;
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 22px;
+        line-height: 1.2;
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 0 0 5px;
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .sub {
+        margin-top: 8px;
+        max-width: 760px;
+      }
+
+      .footer {
+        position: absolute;
+        left: 30px;
+        right: 30px;
+        bottom: 16px;
+        color: #7b8aa2;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .box {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        box-shadow: 0 1px 0 rgba(49, 67, 90, 0.03);
+      }
+
+      .box.teal {
+        border-color: #9ad9d1;
+        background: var(--teal-soft);
+      }
+
+      .box.blue {
+        border-color: #b6c7f5;
+        background: var(--blue-soft);
+      }
+
+      .box.amber {
+        border-color: #ead09a;
+        background: var(--amber-soft);
+      }
+
+      .box.green {
+        border-color: #b7dfbf;
+        background: var(--green-soft);
+      }
+
+      .box.red {
+        border-color: #efb6b6;
+        background: var(--red-soft);
+      }
+
+      .node {
+        min-height: 66px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        background: #fff;
+        border: 2px solid var(--line);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+
+      .node strong {
+        font-size: 14px;
+      }
+
+      .node span {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 3px;
+      }
+
+      .node.active {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(18, 135, 127, 0.1);
+      }
+
+      .node.warn {
+        border-color: var(--amber);
+      }
+
+      .arrow {
+        color: var(--line-strong);
+        font-size: 24px;
+        font-weight: 700;
+        flex: 0 0 auto;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: #fff;
+        color: #42536c;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .tag.teal {
+        color: var(--teal);
+        border-color: #9ad9d1;
+        background: var(--teal-soft);
+      }
+
+      .tag.amber {
+        color: var(--amber);
+        border-color: #ead09a;
+        background: var(--amber-soft);
+      }
+
+      .tag.red {
+        color: var(--red);
+        border-color: #efb6b6;
+        background: var(--red-soft);
+      }
+
+      .mono {
+        font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+      }
+
+      .mini {
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .titlebar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+      }
+
+      .titlebar .tag {
+        margin-top: 4px;
+      }
+
+      .workflow {
+        position: relative;
+        height: 300px;
+        margin-top: 18px;
+      }
+
+      .workflow .node {
+        position: absolute;
+        width: 116px;
+        height: 64px;
+      }
+
+      .line {
+        position: absolute;
+        height: 2px;
+        background: var(--line-strong);
+        transform-origin: left center;
+      }
+
+      .line::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: -5px;
+        border-left: 9px solid var(--line-strong);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+      }
+
+      .line.dash {
+        background: repeating-linear-gradient(90deg, var(--amber) 0 7px, transparent 7px 12px);
+      }
+
+      .line.dash::after {
+        border-left-color: var(--amber);
+      }
+
+      .callout {
+        border-left: 4px solid var(--teal);
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.76);
+        border-radius: 0 8px 8px 0;
+      }
+
+      .panel-layout {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 14px;
+      }
+
+      .screen {
+        height: 330px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        grid-template-columns: 28% 72%;
+        overflow: hidden;
+      }
+
+      .screen .left,
+      .screen .right {
+        padding: 12px;
+        border-right: 1px solid var(--line);
+      }
+
+      .screen .right {
+        border-right: 0;
+      }
+
+      .bar {
+        height: 24px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #f7fafc;
+        margin-bottom: 9px;
+      }
+
+      .big-area {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+      }
+
+      .split3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .flow-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 14px;
+      }
+
+      .flow-row .node {
+        width: 118px;
+      }
+
+      .contract {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+      }
+
+      .contract .box {
+        min-height: 158px;
+      }
+
+      ul {
+        margin: 8px 0 0 18px;
+        padding: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .small-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-size: 11px;
+      }
+
+      .small-table td {
+        border-top: 1px solid #dde6f2;
+        padding: 6px 4px;
+        color: #506078;
+      }
+
+      .number {
+        display: inline-flex;
+        width: 22px;
+        height: 22px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: var(--teal);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        margin-right: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card" id="card-01">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">01 / 新用户先看这里</div>
+          <h1>DeepReason 使用入口地图</h1>
+          <p class="sub">先读手册，再启动调试台；左侧对话负责交互，右侧面板负责观察、审查和修改。</p>
+        </div>
+        <span class="tag teal">960 x 540</span>
+      </div>
+      <div class="panel-layout">
+        <div class="grid" style="grid-template-rows: repeat(4, 1fr)">
+          <div class="box teal"><h3><span class="number">1</span>读手册</h3><p>README 顶部 → docs/README → 用户手册</p></div>
+          <div class="box blue"><h3><span class="number">2</span>启动服务</h3><p class="mono mini">python -m reasoning_agent_template web --port 8767</p></div>
+          <div class="box amber"><h3><span class="number">3</span>发起任务</h3><p>普通对话自动路由；搭建助手生成草稿</p></div>
+          <div class="box green"><h3><span class="number">4</span>看右侧调试</h3><p>Agent、工作流、证据、RAG、门禁、记忆</p></div>
+        </div>
+        <div class="screen">
+          <div class="left">
+            <div class="bar" style="width: 78%"></div>
+            <div class="bar" style="width: 56%"></div>
+            <div class="big-area" style="height: 205px"></div>
+            <div class="bar" style="height: 52px; margin-top: 10px"></div>
+          </div>
+          <div class="right">
+            <div class="row" style="gap: 7px">
+              <div class="bar" style="width: 19%"></div>
+              <div class="bar" style="width: 19%"></div>
+              <div class="bar" style="width: 22%"></div>
+              <div class="bar" style="width: 20%"></div>
+            </div>
+            <div class="big-area" style="height: 126px; margin-bottom: 12px"></div>
+            <div class="row">
+              <div class="big-area" style="width: 28%; height: 155px"></div>
+              <div class="big-area" style="width: 72%; height: 155px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>DeepReason Agents Framework</span><span>入口 → 对话 → 观察 → 审查 → 应用</span></div>
+    </section>
+
+    <section class="card" id="card-02">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">02 / 任务路由</div>
+          <h1>简单任务轻量走，困难任务进证据流</h1>
+          <p class="sub">Coordinator 先判断任务难度和风险，Reviewer 复核是否过松，再决定走普通路径、软证据路径或严格证据路径。</p>
+        </div>
+        <span class="tag amber">自适应流程</span>
+      </div>
+      <div class="flow-row">
+        <div class="node active"><strong>用户问题</strong><span>question</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><strong>Coordinator</strong><span>难度 / 风险 / 证据策略</span></div>
+        <div class="arrow">→</div>
+        <div class="node warn"><strong>Reviewer</strong><span>复核过松判断</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><strong>Planner</strong><span>生成执行计划</span></div>
+      </div>
+      <div class="split3">
+        <div class="box green">
+          <h3>简单问题</h3>
+          <p>身份、闲聊、低风险说明。</p>
+          <ul>
+            <li>不强制检索</li>
+            <li>快速回答</li>
+            <li>保留短期上下文</li>
+          </ul>
+        </div>
+        <div class="box amber">
+          <h3>中等问题</h3>
+          <p>技术解释、方案比较、有限事实判断。</p>
+          <ul>
+            <li>允许软证据</li>
+            <li>证据不足可受限输出</li>
+            <li>在 telemetry 标记不足</li>
+          </ul>
+        </div>
+        <div class="box red">
+          <h3>困难 / 高风险问题</h3>
+          <p>学术、事实、高风险决策、当前信息。</p>
+          <ul>
+            <li>必须尽力检索证据</li>
+            <li>Critic 审计关键 claim</li>
+            <li>Gate 可打回或拒绝</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout" style="margin-top: 16px">
+        <p><strong>意义：</strong>不靠用户手动触发证据系统，而是让 Agent 自主判断复杂度；Reviewer 是第二道保险，避免所有任务都被误判为“简单”。</p>
+      </div>
+      <div class="footer"><span>看 UI：路由/审查 Tab</span><span>关键字段：difficulty / workflow / confidence / reviewer.findings</span></div>
+    </section>
+
+    <section class="card" id="card-03">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">03 / 默认工作流</div>
+          <h1>不是死链，而是带回路的状态图</h1>
+          <p class="sub">证据不足、门禁阻断、验证失败时，工作流会回到检索或推理阶段，而不是硬着头皮输出。</p>
+        </div>
+        <span class="tag teal">Workflow Spec</span>
+      </div>
+      <div class="workflow">
+        <div class="node" style="left: 20px; top: 116px"><strong>接收</strong><span>intake</span></div>
+        <div class="node" style="left: 154px; top: 116px"><strong>计划</strong><span>plan</span></div>
+        <div class="node active" style="left: 292px; top: 116px"><strong>检索</strong><span>retrieve</span></div>
+        <div class="node" style="left: 430px; top: 50px"><strong>推理</strong><span>reason</span></div>
+        <div class="node" style="left: 568px; top: 116px"><strong>证据审计</strong><span>evidence_audit</span></div>
+        <div class="node warn" style="left: 706px; top: 116px"><strong>门禁</strong><span>gate</span></div>
+        <div class="node" style="left: 430px; top: 202px"><strong>验证</strong><span>verify</span></div>
+        <div class="node" style="left: 568px; top: 202px"><strong>沉淀</strong><span>consolidate</span></div>
+        <div class="node" style="left: 706px; top: 202px"><strong>响应</strong><span>respond</span></div>
+
+        <div class="line" style="left: 136px; top: 148px; width: 18px"></div>
+        <div class="line" style="left: 270px; top: 148px; width: 22px"></div>
+        <div class="line" style="left: 408px; top: 148px; width: 46px; transform: rotate(-38deg)"></div>
+        <div class="line" style="left: 546px; top: 82px; width: 55px; transform: rotate(37deg)"></div>
+        <div class="line" style="left: 684px; top: 148px; width: 22px"></div>
+        <div class="line" style="left: 762px; top: 180px; width: 48px; transform: rotate(90deg)"></div>
+        <div class="line" style="left: 546px; top: 234px; width: 22px"></div>
+        <div class="line" style="left: 684px; top: 234px; width: 22px"></div>
+        <div class="line dash" style="left: 626px; top: 116px; width: 206px; transform: rotate(180deg)"></div>
+        <div class="line dash" style="left: 464px; top: 202px; width: 130px; transform: rotate(-90deg)"></div>
+      </div>
+      <div class="row" style="margin-top: -4px">
+        <span class="tag teal">主流程</span>
+        <span class="tag amber">回路/重试</span>
+        <span class="tag">checkpoint: retrieve / audit / gate / verify / consolidate</span>
+      </div>
+      <div class="footer"><span>看 UI：工作流点线图 + 工作流 Tab</span><span>点击节点看 actual_input / actual_output / handoff</span></div>
+    </section>
+
+    <section class="card" id="card-04">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">04 / 结构化交付</div>
+          <h1>节点之间不传散文，传可审计 payload</h1>
+          <p class="sub">每个节点都有设计时契约和运行时产物。这样下游 Agent、Reviewer 和 Gate 才能稳定检查具体字段。</p>
+        </div>
+        <span class="tag blue">Handoff Contract</span>
+      </div>
+      <div class="contract">
+        <div class="box blue">
+          <h3>设计时契约</h3>
+          <table class="small-table">
+            <tr><td class="mono">input_contract</td><td>上游必须交付什么</td></tr>
+            <tr><td class="mono">output_contract</td><td>下游可以依赖什么</td></tr>
+            <tr><td class="mono">work</td><td>节点实际负责什么</td></tr>
+            <tr><td class="mono">gate_policy</td><td>节点级风险/审批规则</td></tr>
+          </table>
+        </div>
+        <div class="box teal">
+          <h3>运行时产物</h3>
+          <table class="small-table">
+            <tr><td class="mono">actual_input</td><td>本轮真实收到的数据</td></tr>
+            <tr><td class="mono">actual_output</td><td>本轮真实产出的数据</td></tr>
+            <tr><td class="mono">process</td><td>可审计过程摘要</td></tr>
+            <tr><td class="mono">handoff</td><td>传给下游的结构包</td></tr>
+          </table>
+        </div>
+        <div class="box amber">
+          <h3>为什么要这样做</h3>
+          <ul>
+            <li>能定位失败发生在哪一层</li>
+            <li>能替换单个 Agent 或节点</li>
+            <li>Gate 可以检查证据数量和风险</li>
+            <li>UI 能展示真实输入输出</li>
+          </ul>
+        </div>
+      </div>
+      <div class="flow-row" style="margin-top: 24px">
+        <div class="node"><strong>Planner</strong><span>输出计划 + 证据策略</span></div>
+        <div class="arrow">→</div>
+        <div class="box teal" style="width: 250px">
+          <h3 class="mono">handoff</h3>
+          <p class="mono mini">{ query, risk_level, required_evidence, route }</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node active"><strong>Retriever</strong><span>按契约检索证据</span></div>
+      </div>
+      <div class="footer"><span>看 UI：点击工作流节点或连线</span><span>关键字段：actual_input / actual_output / process / handoff</span></div>
+    </section>
+
+    <section class="card" id="card-05">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">05 / RAG 与证据</div>
+          <h1>知识库先召回，再变成可引用证据</h1>
+          <p class="sub">本地知识库负责找材料，证据系统负责把材料变成带来源、span、hash、score 的 EvidenceItem。</p>
+        </div>
+        <span class="tag teal">BM25 + Semantic + Graph + Wiki</span>
+      </div>
+      <div class="flow-row">
+        <div class="node"><strong>knowledge/</strong><span>md / txt / json</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><strong>Ingest</strong><span>扫描 + 切 chunk</span></div>
+        <div class="arrow">→</div>
+        <div class="node active"><strong>Retrieve</strong><span>多方法召回</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><strong>Evidence</strong><span>source / span / hash</span></div>
+        <div class="arrow">→</div>
+        <div class="node warn"><strong>Gate</strong><span>合格才放行</span></div>
+      </div>
+      <div class="split3">
+        <div class="box blue">
+          <h3>本地检索</h3>
+          <ul>
+            <li>BM25: 精确术语</li>
+            <li>语义: 近义/跨语言</li>
+            <li>Graph: 概念关系扩展</li>
+          </ul>
+        </div>
+        <div class="box amber">
+          <h3>Fallback</h3>
+          <ul>
+            <li>Wiki 可手动或低分触发</li>
+            <li>外部来源会写 diagnostics</li>
+            <li>失败不静默吞掉</li>
+          </ul>
+        </div>
+        <div class="box green">
+          <h3>证据栏展示</h3>
+          <ul>
+            <li>参考文献索引</li>
+            <li>confidence 和 locator</li>
+            <li>合格/不合格证据</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout" style="margin-top: 16px">
+        <p><strong>使用方式：</strong>在 RAG Tab 输入查询，切换 BM25、语义、Graph、Wiki；用 score_breakdown 判断哪种检索有效。</p>
+      </div>
+      <div class="footer"><span>看 UI：RAG Tab + 证据 Tab</span><span>命令：python -m reasoning_agent_template rag-eval --cases configs/rag_benchmark_cases.json</span></div>
+    </section>
+
+    <section class="card" id="card-06">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">06 / 记忆边界</div>
+          <h1>短期记忆、长期记忆、知识库必须分开</h1>
+          <p class="sub">这三类数据会影响 Agent 的方式不同；混在一起会造成污染、误召回和不可审计。</p>
+        </div>
+        <span class="tag amber">Memory Gate</span>
+      </div>
+      <div class="split3">
+        <div class="box teal">
+          <h3>短期记忆</h3>
+          <p>当前 thread 对话上下文。</p>
+          <ul>
+            <li>自动记录</li>
+            <li>按 thread 隔离</li>
+            <li>不进入知识库</li>
+          </ul>
+        </div>
+        <div class="box blue">
+          <h3>长期记忆</h3>
+          <p>用户偏好、项目事实、流程经验。</p>
+          <ul>
+            <li>分区保存</li>
+            <li>需要证据</li>
+            <li>需要 write_memory gate</li>
+          </ul>
+        </div>
+        <div class="box green">
+          <h3>知识库</h3>
+          <p>论文、文档、规范、API、数据集。</p>
+          <ul>
+            <li>放入 knowledge/</li>
+            <li>通过 RAG 召回</li>
+            <li>不代表用户偏好</li>
+          </ul>
+        </div>
+      </div>
+      <div class="flow-row" style="margin-top: 26px">
+        <div class="node"><strong>Verify</strong><span>输出验证完成</span></div>
+        <div class="arrow">→</div>
+        <div class="node active"><strong>Consolidate</strong><span>生成沉淀候选</span></div>
+        <div class="arrow">→</div>
+        <div class="box amber" style="width: 200px"><h3>Proposal only</h3><p>只生成候选，不直接改长期记忆或技能。</p></div>
+        <div class="arrow">→</div>
+        <div class="node warn"><strong>Gate</strong><span>人工/证据审查</span></div>
+      </div>
+      <div class="footer"><span>看 UI：记忆 Tab</span><span>关键边界：short_term ≠ long_term ≠ knowledge_base</span></div>
+    </section>
+
+    <section class="card" id="card-07">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">07 / 可视化编辑与提案</div>
+          <h1>AI 生成草稿，人类审查，Code Modifier 应用</h1>
+          <p class="sub">搭建助手只负责把自然语言变成 draft；真正生效必须经过保存草稿、生成提案、审查 diff、批准应用。</p>
+        </div>
+        <span class="tag red">不能绕过人工批准</span>
+      </div>
+      <div class="flow-row">
+        <div class="node active"><strong>搭建助手</strong><span>/配置 /搭建</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><strong>Agents Draft</strong><span>角色/工具/权限</span></div>
+        <div class="arrow">+</div>
+        <div class="node"><strong>Workflow Draft</strong><span>节点/连线/门禁</span></div>
+        <div class="arrow">→</div>
+        <div class="node warn"><strong>人工审查</strong><span>编辑器面板</span></div>
+      </div>
+      <div class="flow-row" style="margin-top: 22px">
+        <div class="box blue" style="width: 170px"><h3>保存草稿</h3><p>写入 draft 并校验。</p></div>
+        <div class="arrow">→</div>
+        <div class="box amber" style="width: 170px"><h3>生成提案</h3><p>生成 diff preview。</p></div>
+        <div class="arrow">→</div>
+        <div class="box red" style="width: 170px"><h3>批准应用</h3><p>必须 approved=true。</p></div>
+        <div class="arrow">→</div>
+        <div class="box green" style="width: 190px"><h3>Code Modifier</h3><p>只改允许路径，不碰 secrets / logs / evidence。</p></div>
+      </div>
+      <div class="callout" style="margin-top: 22px">
+        <p><strong>意义：</strong>让 Agent 架构可动态调整，但所有结构变化都留下 proposal id、draft hash、diff、修改文件和测试命令。</p>
+      </div>
+      <div class="footer"><span>看 UI：多 Agent 面板 + 工作流编辑器</span><span>按钮：保存草稿 → 生成提案 → 批准应用</span></div>
+    </section>
+
+    <section class="card" id="card-08">
+      <div class="titlebar">
+        <div>
+          <div class="kicker">08 / 二次开发闭环</div>
+          <h1>从需求到可验证 Agent 的开发流程</h1>
+          <p class="sub">不要一上来写大段 prompt。先定义边界、数据、节点、门禁和测试，再让 Agent 在可观测工作流里运行。</p>
+        </div>
+        <span class="tag teal">Developer Loop</span>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 14px">
+        <div class="box teal"><h3><span class="number">1</span>定义目标</h3><p>identity、失败边界、受众和任务风险。</p></div>
+        <div class="box blue"><h3><span class="number">2</span>准备知识</h3><p>把论文、规范、API 文档放进 knowledge/。</p></div>
+        <div class="box amber"><h3><span class="number">3</span>设计角色</h3><p>Agent spec 写职责、工具、权限、记忆访问。</p></div>
+        <div class="box green"><h3><span class="number">4</span>设计流程</h3><p>Workflow spec 写节点、边、contract、gate。</p></div>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 12px">
+        <div class="box"><h3><span class="number">5</span>补技能</h3><p>把强约束写入 skills/*/SKILL.md。</p></div>
+        <div class="box"><h3><span class="number">6</span>跑测试</h3><p class="mono mini">python -m unittest discover -s tests -v</p></div>
+        <div class="box"><h3><span class="number">7</span>测召回</h3><p class="mono mini">rag-eval --cases configs/rag_benchmark_cases.json</p></div>
+        <div class="box"><h3><span class="number">8</span>开调试台</h3><p>看状态、节点、证据、门禁、事件和 raw JSON。</p></div>
+      </div>
+      <div class="callout" style="margin-top: 20px">
+        <p><strong>开发判断：</strong>新增能力时先问它是 Agent、节点、工具、技能、记忆策略还是 RAG 方法；不要把所有东西都塞进一个大 prompt。</p>
+      </div>
+      <div class="footer"><span>看文档：docs/user-manual.md</span><span>最小验证：unittest + node --check + rag-eval</span></div>
+    </section>
+  </body>
+</html>

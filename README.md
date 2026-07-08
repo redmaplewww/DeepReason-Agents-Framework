@@ -9,9 +9,10 @@ DeepReason Agents Framework 是一个面向“重推理任务”的本地优先 
 如果你是第一次打开这个项目，建议先按下面顺序阅读：
 
 1. [用户手册与学习手册](docs/user-manual.md)：完整解释每个功能区、每个 Tab、节点结构化输出、证据/RAG/门禁/记忆机制，以及如何基于框架做开发。
-2. [完整使用指南](docs/usage-guide.md)：快速了解运行、配置、知识库、工作流和二开流程。
-3. [工作流编辑器使用说明](docs/workflow-editor-usage.md)：专门学习如何编辑节点、连线、门禁、交付契约和 proposal。
-4. [RAG 索引指南](docs/rag-indexing-guide.md)：学习如何初始化知识库、切换 BM25/语义/Graph/Wiki 检索。
+2. [使用说明图片卡片](docs/usage-cards.md)：8 张小尺寸流程图，适合写笔记、做教程或快速讲解。
+3. [完整使用指南](docs/usage-guide.md)：快速了解运行、配置、知识库、工作流和二开流程。
+4. [工作流编辑器使用说明](docs/workflow-editor-usage.md)：专门学习如何编辑节点、连线、门禁、交付契约和 proposal。
+5. [RAG 索引指南](docs/rag-indexing-guide.md)：学习如何初始化知识库、切换 BM25/语义/Graph/Wiki 检索。
 
 ![DeepReason 调试控制台总览](docs/assets/deepreason-console-overview.png)
 

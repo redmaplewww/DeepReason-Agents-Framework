@@ -7,16 +7,19 @@
    - 解释节点之间的结构化输出、交付契约、证据系统、RAG、门禁、记忆和自进化。
    - 适合作为学习框架和二次开发的主教材。
 
-2. [完整使用指南](usage-guide.md)
+2. [使用说明图片卡片](usage-cards.md)
+   - 8 张小尺寸说明图，适合写笔记、做教程或快速讲解工作流程。
+
+3. [完整使用指南](usage-guide.md)
    - 介绍如何启动、配置 DeepSeek、使用 CLI/Web、建立知识库和开发自己的 Agent。
 
-3. [工作流编辑器使用说明](workflow-editor-usage.md)
+4. [工作流编辑器使用说明](workflow-editor-usage.md)
    - 介绍如何新增/删除/修改节点和连线，如何保存草稿、生成提案和批准应用。
 
-4. [RAG 索引指南](rag-indexing-guide.md)
+5. [RAG 索引指南](rag-indexing-guide.md)
    - 介绍知识库初始化、BM25/语义/Graph/Wiki 检索方式和评测方法。
 
-5. [架构说明](architecture.md)
+6. [架构说明](architecture.md)
    - 介绍本地优先 runtime、Deep Agents/LangGraph 接入方向、技能、证据和插件边界。
 
 其他文档：
