@@ -3,14 +3,15 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "reasoning-agent-template"
+name = "deepreason-agents-framework"
 version = "0.1.0"
-description = "Local-first heavy-reasoning agent template with evidence, gates, memory, skills, and optional Deep Agents runtime."
+description = "Local-first heavy-reasoning multi-agent framework with evidence gates, memory, RAG, workflow graphs, skills, and optional Deep Agents runtime."
 requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
 reasoning-agent = "reasoning_agent_template.cli:main"
+deepreason-agent = "reasoning_agent_template.cli:main"
 
 [project.optional-dependencies]
 deepagents = [

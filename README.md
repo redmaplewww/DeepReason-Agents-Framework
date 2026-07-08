@@ -1,6 +1,6 @@
-# Heavy Reasoning Agent Template
+# DeepReason Agents Framework
 
-This is a developer template for building evidence-first, stateful, skillized reasoning agents. It provides local implementations for evidence ledgers, gates, knowledge retrieval, memory partitions, self-evolution proposals, skill metadata, and a deterministic coordinator.
+DeepReason Agents Framework is a developer framework for building evidence-first, stateful, skillized, heavy-reasoning multi-agent systems. It provides local implementations for evidence ledgers, gates, knowledge retrieval, memory partitions, self-evolution proposals, skill metadata, workflow graphs, and a deterministic coordinator.
 
 The intended runtime is LangGraph OSS plus Deep Agents. The default template stays runnable without API keys; enable Deep Agents in `agent.yaml` after installing optional dependencies.
 
@@ -27,6 +27,7 @@ reasoning-agent chat "What constraints does this template enforce?"
 reasoning-agent skills
 reasoning-agent test
 reasoning-agent web
+deepreason-agent web
 ```
 
 Open the local web chat and debug console:
