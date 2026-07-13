@@ -114,6 +114,7 @@ class AgentState:
     gate_decisions: list[GateDecision] = field(default_factory=list)
     action_results: list[str] = field(default_factory=list)
     verification_notes: list[str] = field(default_factory=list)
+    claim_review: dict[str, Any] = field(default_factory=dict)
     pending_consolidation: list[str] = field(default_factory=list)
     evidence_consolidation_proposals: list[dict[str, Any]] = field(default_factory=list)
     answer: str = ""

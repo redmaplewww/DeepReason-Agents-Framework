@@ -1078,6 +1078,7 @@ class MultiAgentOrchestrator:
             "plan": self._plan_artifacts,
             "retrieve": self._retrieve_artifacts,
             "reason": self._reason_artifacts,
+            "claim_check": self._claim_check_artifacts,
             "evidence_audit": self._evidence_audit_artifacts,
             "gate": self._gate_artifacts,
             "act_or_answer": self._act_or_answer_artifacts,
@@ -1197,6 +1198,54 @@ class MultiAgentOrchestrator:
             "actual_output": {"answer_draft": state.answer, "response_kind": state.response_kind},
             "process": self._stage_event_messages(state, "reason"),
             "handoff": self._stage_handoff("reason"),
+        }
+
+    def _claim_check_artifacts(
+        self,
+        state: AgentState,
+    ) -> dict[str, Any]:
+        review = dict(state.claim_review)
+
+        return {
+            "actual_input": {
+                "answer_draft": review.get(
+                    "answer_draft",
+                    "",
+                ),
+                "candidate_evidence_ids": (
+                    review.get(
+                        "candidate_evidence_ids",
+                        [],
+                    )
+                ),
+            },
+            "actual_output": {
+                "claims": review.get(
+                    "claims",
+                    [],
+                ),
+                "claims_with_candidate_evidence": (
+                    review.get(
+                        "claims_with_candidate_evidence",
+                        [],
+                    )
+                ),
+                "unsupported_claims": review.get(
+                    "unsupported_claims",
+                    [],
+                ),
+                "required_follow_up": review.get(
+                    "required_follow_up",
+                    [],
+                ),
+            },
+            "process": self._stage_event_messages(
+                state,
+                "claim_check",
+            ),
+            "handoff": self._stage_handoff(
+                "claim_check"
+            ),
         }
 
     def _evidence_audit_artifacts(self, state: AgentState) -> dict[str, Any]:

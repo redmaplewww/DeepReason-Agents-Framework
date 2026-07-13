@@ -235,6 +235,95 @@ class TemplateCoordinator:
     def _passthrough(self, state: AgentState) -> None:
         state.action_results.append(f"{state.current_stage} passthrough completed")
 
+    def _claim_check(self, state: AgentState) -> None:
+        """检查回答草稿中的结论与候选证据缺口。"""
+
+        draft = str(state.answer or "").strip()
+        normalized = draft
+
+        for punctuation in (
+            "。",
+            "！",
+            "？",
+            "；",
+            ";",
+            ".",
+            "!",
+            "?",
+        ):
+            normalized = normalized.replace(
+                punctuation,
+                "\n",
+            )
+
+        claims = [
+            line.strip()
+            for line in normalized.splitlines()
+            if line.strip()
+        ]
+
+        candidate_chunks = [
+            *state.retrieval_results,
+            *state.external_results,
+        ]
+
+        candidate_evidence_ids = [
+            item.id
+            for item in state.evidence
+        ]
+
+        claims_with_candidate_evidence = (
+            list(claims)
+            if candidate_chunks
+            else []
+        )
+
+        unsupported_claims = (
+            list(claims)
+            if (
+                state.evidence_mode == "required"
+                and not candidate_chunks
+            )
+            else []
+        )
+
+        required_follow_up: list[str] = []
+
+        if unsupported_claims:
+            required_follow_up.append(
+                "重新检索与关键结论直接相关的证据，"
+                "并在 evidence_audit 中核验。"
+            )
+        elif candidate_chunks:
+            required_follow_up.append(
+                "在 evidence_audit 中核验候选证据的"
+                "相关性、来源质量和门禁资格。"
+            )
+
+        state.claim_review = {
+            "answer_draft": draft,
+            "claims": claims,
+            "candidate_evidence_ids": (
+                candidate_evidence_ids
+            ),
+            "claims_with_candidate_evidence": (
+                claims_with_candidate_evidence
+            ),
+            "unsupported_claims": (
+                unsupported_claims
+            ),
+            "required_follow_up": (
+                required_follow_up
+            ),
+        }
+
+        state.verification_notes.append(
+            "claim_check 已检查 "
+            f"{len(claims)} 条结论，"
+            f"发现 {len(unsupported_claims)} 条"
+            "尚无候选证据支持的结论"
+        )
+
     def _review_note(self, state: AgentState) -> None:
         state.verification_notes.append(f"{state.current_stage} review completed")
 

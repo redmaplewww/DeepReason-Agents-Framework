@@ -28,6 +28,7 @@ BUILTIN_STAGE_HANDLERS = {
     "respond",
     "passthrough",
     "review_note",
+    "claim_check",
 }
 
 
