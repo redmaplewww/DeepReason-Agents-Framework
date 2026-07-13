@@ -79,6 +79,88 @@ class ChatClient(Protocol):
         ...
 
 
+
+_LIMITATION_MARKERS = (
+    "证据不足",
+    "受限回答",
+    "尚未通过",
+    "不能视为确定结论",
+)
+
+_CERTAINTY_REPLACEMENTS = {
+    "可靠证据已经": "当前尚未通过审计的材料",
+    "充分证明": "仅能初步支持",
+    "完全正确": "可能成立",
+    "证据确凿": "现有材料仍不充分",
+    "足以证明": "只能有限支持",
+}
+
+
+def _enforce_final_answer_constraints(
+    answer: str,
+    state: AgentState,
+) -> tuple[str, dict[str, Any]]:
+    """在最终回答生成后，落实 Gate 对软证据回答的限制。"""
+
+    text = str(answer or "").strip()
+
+    gate_status = (
+        state.gate_decisions[-1].status
+        if state.gate_decisions
+        else ""
+    )
+
+    requires_limited_answer = (
+        state.evidence_mode == "required"
+        and state.evidence_strictness == "soft"
+        and state.evidence_status != "qualified"
+        and gate_status == "allow"
+    )
+
+    if not requires_limited_answer:
+        return text, {
+            "applied": False,
+            "reason": "当前运行不需要软证据回答约束",
+            "replacements": [],
+        }
+
+    detected_certainty = [
+        marker
+        for marker in _CERTAINTY_REPLACEMENTS
+        if marker in text
+    ]
+
+    # 只修正真正违反门禁限制的确定性表述，
+    # 不修改普通文本、程序标识符或测试占位值。
+    if not detected_certainty:
+        return text, {
+            "applied": False,
+            "reason": "未检测到违反软证据门禁的确定性表述",
+            "replacements": [],
+        }
+
+    replacements: list[str] = []
+
+    for forbidden in detected_certainty:
+        text = text.replace(
+            forbidden,
+            _CERTAINTY_REPLACEMENTS[forbidden],
+        )
+        replacements.append(forbidden)
+
+    if not any(marker in text for marker in _LIMITATION_MARKERS):
+        prefix = (
+            "当前证据不足，且检索到的材料尚未通过证据审计。"
+            "以下仅为受限回答，不能视为确定结论。\n\n"
+        )
+        text = prefix + text
+
+    return text, {
+        "applied": True,
+        "reason": "检测到与软证据门禁冲突的确定性表述",
+        "replacements": replacements,
+    }
+
 class MultiAgentOrchestrator:
     """Wrap TemplateCoordinator with explicit multi-agent telemetry."""
 
@@ -197,7 +279,25 @@ class MultiAgentOrchestrator:
                 long_term_memory=long_term_before,
             )
             answer = _sanitize_answer_for_user(answer)
+            answer, final_verification = _enforce_final_answer_constraints(answer, result.state)
             events.extend(llm_events)
+            if final_verification["applied"]:
+                verification_note = (
+                    "最终回答已执行软证据约束："
+                    "声明证据不足，并降低确定性表述"
+                )
+                if hasattr(result.state, "verification_notes"):
+                    result.state.verification_notes.append(
+                        verification_note
+                    )
+                events.append({
+                    "time": utc_now(),
+                    "agent": "critic",
+                    "kind": "post_generation_verification",
+                    "stage": "respond",
+                    "message": verification_note,
+                    "details": final_verification,
+                })
 
             memory_writes = self._write_explicit_long_term_memory(message)
             short_term_memory_store.append(user=message, assistant=answer, run_id=run_id)
