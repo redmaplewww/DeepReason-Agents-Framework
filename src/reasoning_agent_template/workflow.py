@@ -239,8 +239,7 @@ class TemplateCoordinator:
     def _split_claims(draft: str) -> list[str]:
         claim_parts = re.split(
             r"[\u3002\uff01\uff1f\uff1b;!?\r\n]+|"
-            r"(?<![eE]\.[gG])"
-            r"(?<![iI]\.[eE])"
+            r"(?<![A-Za-z]\.[A-Za-z])"
             r"\.(?=\s|$)",
             draft,
         )
