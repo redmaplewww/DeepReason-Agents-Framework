@@ -785,25 +785,50 @@ def _requires_evidence_system(value: str) -> bool:
 
 def _is_identity_question(value: str) -> bool:
     text = value.lower().strip()
-    chinese_terms = [
+
+    chinese_identity_terms = [
         "你是谁",
         "你是啥",
         "你是什么",
         "你能做什么",
         "你可以做什么",
         "介绍一下你",
-        "你好",
     ]
-    if any(term in text for term in chinese_terms):
+
+    if any(
+        term in text
+        for term in chinese_identity_terms
+    ):
         return True
-    english_patterns = [
-        r"\bhello\b",
-        r"\bhi\b",
+
+    # “你好”只有在整句话基本就是问候时才触发，
+    # 避免把“请改写‘你好’”误判成身份问题。
+    if re.fullmatch(
+        r"\s*(你好|您好)[！!。.?？]*\s*",
+        text,
+    ):
+        return True
+
+    english_identity_patterns = [
         r"\bwho are you\b",
         r"\bwhat are you\b",
         r"\bwhat can you do\b",
     ]
-    return any(re.search(pattern, text) for pattern in english_patterns)
+
+    if any(
+        re.search(pattern, text)
+        for pattern in english_identity_patterns
+    ):
+        return True
+
+    # hello / hi 同样只在独立问候时触发。
+    return bool(
+        re.fullmatch(
+            r"\s*(hello|hi)[!.?]*\s*",
+            text,
+        )
+    )
+
 
 
 def _knowledge_methods(config: dict[str, Any]) -> list[str]:
