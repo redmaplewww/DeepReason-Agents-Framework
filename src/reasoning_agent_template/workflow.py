@@ -235,6 +235,295 @@ class TemplateCoordinator:
     def _passthrough(self, state: AgentState) -> None:
         state.action_results.append(f"{state.current_stage} passthrough completed")
 
+    @staticmethod
+    def _split_claims(draft: str) -> list[str]:
+        claims: list[str] = []
+        start = 0
+        hard_boundaries = set("\u3002\uff01\uff1f\uff1b;!?\r\n")
+
+        def should_split_period(index: int) -> bool:
+            if (
+                index + 1 < len(draft)
+                and not draft[index + 1].isspace()
+            ):
+                return False
+
+            segment = draft[start:index + 1].strip()
+            lowered = segment.lower()
+
+            if lowered.endswith(("e.g.", "i.e.")):
+                return False
+
+            remainder = draft[index + 1:].lstrip()
+
+            if (
+                lowered.endswith("etc.")
+                and remainder
+                and remainder[0].islower()
+            ):
+                return False
+
+            if (
+                lowered.endswith(
+                    ("mr.", "mrs.", "ms.", "dr.", "prof.")
+                )
+                and remainder
+                and remainder[0].isupper()
+            ):
+                return False
+
+            initialism = re.search(
+                r"(?:[A-Za-z]\.){2,}$",
+                segment,
+            )
+
+            if initialism:
+                remainder = draft[index + 1:].lstrip()
+
+                if not remainder:
+                    return True
+
+                if remainder[0].isupper():
+                    prefix = (
+                        segment[:initialism.start()]
+                        .strip()
+                        .lower()
+                    )
+
+                    return prefix not in {
+                        "",
+                        "the",
+                        "a",
+                        "an",
+                    }
+
+                return False
+
+            return True
+
+        for index, char in enumerate(draft):
+            split_here = char in hard_boundaries
+            include_boundary = False
+
+            if char == ".":
+                split_here = should_split_period(index)
+
+            if (
+                char in hard_boundaries
+                and index + 1 < len(draft)
+                and draft[index + 1] == "\u201d"
+            ):
+                split_here = False
+
+            if (
+                char == "\u201d"
+                and index > 0
+                and draft[index - 1] in hard_boundaries
+                and (
+                    index + 1 == len(draft)
+                    or draft[index + 1].isspace()
+                )
+            ):
+                split_here = True
+                include_boundary = True
+
+            if (
+                char == '"'
+                and index > 0
+                and draft[index - 1] == "."
+                and (
+                    index + 1 == len(draft)
+                    or draft[index + 1].isspace()
+                )
+            ):
+                split_here = True
+                include_boundary = True
+
+            if split_here:
+                claim_end = (
+                    index + 1
+                    if include_boundary
+                    else index
+                )
+                claim = draft[start:claim_end].strip()
+
+                if claim:
+                    claims.append(claim)
+
+                start = index + 1
+
+        final_claim = draft[start:].strip()
+
+        if final_claim:
+            claims.append(final_claim)
+
+        return claims
+
+    def _claim_check(self, state: AgentState) -> None:
+        """检查回答草稿中的结论与候选证据缺口。"""
+
+        draft = str(state.answer or "").strip()
+        claims = self._split_claims(draft)
+
+        candidate_chunks = [
+            *state.retrieval_results,
+            *state.external_results,
+        ]
+
+        def text_terms(value: str) -> set[str]:
+            lowered = value.lower()
+
+            latin_terms = re.findall(
+                r"[a-z0-9_]{2,}",
+                lowered,
+            )
+
+            chinese_runs = re.findall(
+                r"[\u4e00-\u9fff]+",
+                lowered,
+            )
+
+            chinese_terms = [
+                run[index:index + 2]
+                for run in chinese_runs
+                for index in range(len(run) - 1)
+            ]
+
+            return set(
+                latin_terms + chinese_terms
+            )
+
+        def claim_matches_chunk(
+            claim: str,
+            chunk_text: str,
+        ) -> bool:
+            normalized_claim = re.sub(
+                r"[\W_]+",
+                "",
+                claim.lower(),
+            )
+            normalized_chunk = re.sub(
+                r"[\W_]+",
+                "",
+                chunk_text.lower(),
+            )
+
+            if (
+                normalized_claim
+                and normalized_claim in normalized_chunk
+            ):
+                return True
+
+            claim_terms = text_terms(claim)
+            chunk_terms = text_terms(chunk_text)
+
+            if not claim_terms:
+                return False
+
+            overlap = (
+                claim_terms
+                & chunk_terms
+            )
+
+            coverage = (
+                len(overlap)
+                / len(claim_terms)
+            )
+
+            return coverage >= 0.5
+
+        claim_evidence_bindings: dict[
+            str,
+            list[str],
+        ] = {}
+
+        for claim in claims:
+            matched_ids = [
+                chunk.evidence_id
+                for chunk in candidate_chunks
+                if (
+                    chunk.evidence_id
+                    and claim_matches_chunk(
+                        claim,
+                        chunk.text,
+                    )
+                )
+            ]
+
+            claim_evidence_bindings[claim] = list(
+                dict.fromkeys(matched_ids)
+            )
+
+        claims_with_candidate_evidence = [
+            claim
+            for claim in claims
+            if claim_evidence_bindings[claim]
+        ]
+
+        unsupported_claims = [
+            claim
+            for claim in claims
+            if (
+                state.evidence_mode == "required"
+                and not claim_evidence_bindings[claim]
+            )
+        ]
+
+        candidate_evidence_ids = list(
+            dict.fromkeys(
+                [
+                    chunk.evidence_id
+                    for chunk in candidate_chunks
+                    if chunk.evidence_id
+                ]
+                + [
+                    item.id
+                    for item in state.evidence
+                ]
+            )
+        )
+
+        required_follow_up: list[str] = []
+
+        if unsupported_claims:
+            required_follow_up.append(
+                "重新检索与关键结论直接相关的证据，"
+                "并在 evidence_audit 中核验。"
+            )
+        elif candidate_chunks:
+            required_follow_up.append(
+                "在 evidence_audit 中核验候选证据的"
+                "相关性、来源质量和门禁资格。"
+            )
+
+        state.claim_review = {
+            "answer_draft": draft,
+            "claims": claims,
+            "candidate_evidence_ids": (
+                candidate_evidence_ids
+            ),
+            "claim_evidence_bindings": (
+                claim_evidence_bindings
+            ),
+            "claims_with_candidate_evidence": (
+                claims_with_candidate_evidence
+            ),
+            "unsupported_claims": (
+                unsupported_claims
+            ),
+            "required_follow_up": (
+                required_follow_up
+            ),
+        }
+
+        state.verification_notes.append(
+            "claim_check 已检查 "
+            f"{len(claims)} 条结论，"
+            f"发现 {len(unsupported_claims)} 条"
+            "尚无候选证据支持的结论"
+        )
+
+
     def _review_note(self, state: AgentState) -> None:
         state.verification_notes.append(f"{state.current_stage} review completed")
 
@@ -696,25 +985,50 @@ def _requires_evidence_system(value: str) -> bool:
 
 def _is_identity_question(value: str) -> bool:
     text = value.lower().strip()
-    chinese_terms = [
+
+    chinese_identity_terms = [
         "你是谁",
         "你是啥",
         "你是什么",
         "你能做什么",
         "你可以做什么",
         "介绍一下你",
-        "你好",
     ]
-    if any(term in text for term in chinese_terms):
+
+    if any(
+        term in text
+        for term in chinese_identity_terms
+    ):
         return True
-    english_patterns = [
-        r"\bhello\b",
-        r"\bhi\b",
+
+    # “你好”只有在整句话基本就是问候时才触发，
+    # 避免把“请改写‘你好’”误判成身份问题。
+    if re.fullmatch(
+        r"\s*(你好|您好)[！!。.?？]*\s*",
+        text,
+    ):
+        return True
+
+    english_identity_patterns = [
         r"\bwho are you\b",
         r"\bwhat are you\b",
         r"\bwhat can you do\b",
     ]
-    return any(re.search(pattern, text) for pattern in english_patterns)
+
+    if any(
+        re.search(pattern, text)
+        for pattern in english_identity_patterns
+    ):
+        return True
+
+    # hello / hi 同样只在独立问候时触发。
+    return bool(
+        re.fullmatch(
+            r"\s*(hello|hi)[!.?]*\s*",
+            text,
+        )
+    )
+
 
 
 def _knowledge_methods(config: dict[str, Any]) -> list[str]:

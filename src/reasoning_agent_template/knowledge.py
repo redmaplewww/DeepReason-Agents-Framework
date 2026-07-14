@@ -76,6 +76,14 @@ GLOSSARY = {
     "环节": ["stage", "node"],
     "自进化": ["self", "evolution", "proposal"],
     "提案": ["proposal", "request"],
+    "证据门禁": [
+        "evidence",
+        "gate",
+        "approval",
+        "requirements",
+        "workspace",
+        "boundaries",
+    ],
 }
 SYNONYMS = {
     "recollection": ["memory"],
@@ -462,14 +470,26 @@ def _expanded_terms(value: str) -> set[str]:
 
 def _semantic_vector(value: str) -> Counter[str]:
     terms = _expanded_terms(value)
-    vector: Counter[str] = Counter(terms)
+    vector: Counter[str] = Counter()
+
+    for term in terms:
+        contains_cjk = bool(
+            re.search(r"[\u4e00-\u9fff]", term)
+        )
+        vector[term] = 0.25 if contains_cjk else 1.0
+
     compact = re.sub(r"\s+", " ", value.lower())
-    for token in re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{3,}", compact):
+
+    for token in re.findall(
+        r"[a-zA-Z][a-zA-Z0-9_-]{3,}",
+        compact,
+    ):
         token = token.replace("-", "")
+
         for index in range(max(0, len(token) - 2)):
             vector[f"tri:{token[index:index + 3]}"] += 0.25
-    return vector
 
+    return vector
 
 def _overlap_score(query_terms: set[str], text_terms: set[str]) -> float:
     if not query_terms:

@@ -1,0 +1,345 @@
+{
+  "version": "1.0",
+  "name": "learning-claim-check-workflow",
+  "revision": "claim-check-v1",
+  "start_node": "intake",
+  "terminal_nodes": [
+    "respond"
+  ],
+  "protected_nodes": [
+    "intake",
+    "plan",
+    "retrieve",
+    "reason",
+    "evidence_audit",
+    "gate",
+    "act_or_answer",
+    "verify",
+    "consolidate",
+    "respond"
+  ],
+  "nodes": [
+    {
+      "id": "intake",
+      "label": "接收",
+      "agent": "coordinator",
+      "description": "接收目标并建立运行上下文",
+      "work": "规范化用户目标，形成难度、风险和证据工作流上下文。",
+      "input_contract": "用户问题",
+      "output_contract": "规范化目标",
+      "handler_kind": "builtin",
+      "handler": "intake",
+      "checkpoint": false,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "plan",
+      "label": "计划",
+      "agent": "planner",
+      "description": "生成可审计的推理计划",
+      "work": "根据路由和 reviewer 审查生成可执行计划。",
+      "input_contract": "规范化目标",
+      "output_contract": "计划步骤",
+      "handler_kind": "builtin",
+      "handler": "plan",
+      "checkpoint": false,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "retrieve",
+      "label": "检索",
+      "agent": "retriever",
+      "description": "检索本地知识库、外部论文和用户经验证据",
+      "work": "按证据策略检索 RAG、论文、网页或用户经验证据。",
+      "input_contract": "计划步骤",
+      "output_contract": "证据候选",
+      "handler_kind": "builtin",
+      "handler": "retrieve",
+      "checkpoint": true,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "reason",
+      "label": "推理",
+      "agent": "reasoner",
+      "description": "基于证据生成草案答案",
+      "work": "基于当前证据、记忆和计划生成答案草案。",
+      "input_contract": "证据候选",
+      "output_contract": "答案草案",
+      "handler_kind": "builtin",
+      "handler": "reason",
+      "checkpoint": false,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "claim_check",
+      "label": "结论检查",
+      "agent": "critic",
+      "description": "检查草案中的关键结论与证据缺口",
+      "work": "提取草案中的关键结论，记录尚未获得证据支持的结论。",
+      "input_contract": "答案草案",
+      "output_contract": "结构化结论检查记录",
+      "handler_kind": "builtin",
+      "handler": "claim_check",
+      "checkpoint": true
+    },
+    {
+      "id": "evidence_audit",
+      "label": "证据审计",
+      "agent": "critic",
+      "description": "检查关键结论是否绑定证据",
+      "work": "审计答案草案和证据状态，记录不足与合格证据。",
+      "input_contract": "答案草案",
+      "output_contract": "证据审计结果",
+      "handler_kind": "builtin",
+      "handler": "evidence_audit",
+      "checkpoint": true,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "gate",
+      "label": "门禁",
+      "agent": "critic",
+      "description": "执行风险、证据和审批门禁",
+      "work": "根据风险、证据和审批策略作出 allow/interruption/deny。",
+      "input_contract": "证据审计结果",
+      "output_contract": "门禁决策",
+      "handler_kind": "builtin",
+      "handler": "gate",
+      "checkpoint": true,
+      "gate_policy": {
+        "approval_action": "answer",
+        "risk": "dynamic"
+      },
+      "ui": {}
+    },
+    {
+      "id": "act_or_answer",
+      "label": "行动/回答",
+      "agent": "coordinator",
+      "description": "根据门禁结果行动或回答",
+      "work": "在门禁允许时发布答案，阻断时返回受限状态。",
+      "input_contract": "门禁决策",
+      "output_contract": "可发布结果",
+      "handler_kind": "builtin",
+      "handler": "act_or_answer",
+      "checkpoint": false,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "verify",
+      "label": "验证",
+      "agent": "critic",
+      "description": "验证状态、证据和输出一致性",
+      "work": "检查输出、门禁和证据状态是否一致。",
+      "input_contract": "可发布结果",
+      "output_contract": "验证记录",
+      "handler_kind": "builtin",
+      "handler": "verify",
+      "checkpoint": true,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "consolidate",
+      "label": "沉淀",
+      "agent": "memory",
+      "description": "只生成记忆/演进候选，不直接写保护资产",
+      "work": "把合格证据生成可审查沉淀提案，不直接改长期记忆或技能。",
+      "input_contract": "验证记录",
+      "output_contract": "沉淀候选",
+      "handler_kind": "builtin",
+      "handler": "consolidate",
+      "checkpoint": true,
+      "gate_policy": {},
+      "ui": {}
+    },
+    {
+      "id": "respond",
+      "label": "响应",
+      "agent": "coordinator",
+      "description": "输出最终答案和调试遥测",
+      "work": "输出最终答案、参考文献索引和调试 payload。",
+      "input_contract": "沉淀候选",
+      "output_contract": "最终响应",
+      "handler_kind": "builtin",
+      "handler": "respond",
+      "checkpoint": false,
+      "gate_policy": {},
+      "ui": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "intake_to_plan",
+      "from": "intake",
+      "to": "plan",
+      "type": "flow",
+      "condition": "normalized goal",
+      "handoff_contract": {
+        "payload": "routing + normalized_goal"
+      },
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": true
+    },
+    {
+      "id": "plan_to_retrieve",
+      "from": "plan",
+      "to": "retrieve",
+      "type": "branch",
+      "condition": "evidence required",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "plan_to_reason",
+      "from": "plan",
+      "to": "reason",
+      "type": "branch",
+      "condition": "routine path",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "retrieve_to_reason",
+      "from": "retrieve",
+      "to": "reason",
+      "type": "flow",
+      "condition": "evidence context",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "evidence_audit_to_gate",
+      "from": "evidence_audit",
+      "to": "gate",
+      "type": "flow",
+      "condition": "audit result",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "evidence_audit_to_retrieve",
+      "from": "evidence_audit",
+      "to": "retrieve",
+      "type": "retry",
+      "condition": "evidence gap",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "gate_to_act_or_answer",
+      "from": "gate",
+      "to": "act_or_answer",
+      "type": "flow",
+      "condition": "gate decision",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "gate_to_retrieve",
+      "from": "gate",
+      "to": "retrieve",
+      "type": "retry",
+      "condition": "gate blocked",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "act_or_answer_to_verify",
+      "from": "act_or_answer",
+      "to": "verify",
+      "type": "flow",
+      "condition": "answer/action",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "verify_to_consolidate",
+      "from": "verify",
+      "to": "consolidate",
+      "type": "flow",
+      "condition": "verified output",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "verify_to_reason",
+      "from": "verify",
+      "to": "reason",
+      "type": "revise",
+      "condition": "verification failed",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "consolidate_to_respond",
+      "from": "consolidate",
+      "to": "respond",
+      "type": "flow",
+      "condition": "publishable result",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "consolidate_to_evidence_audit",
+      "from": "consolidate",
+      "to": "evidence_audit",
+      "type": "loop",
+      "condition": "proposal audit",
+      "handoff_contract": {},
+      "gate_policy": {},
+      "planner_contract": {},
+      "reviewer_required": false
+    },
+    {
+      "id": "reason_to_claim_check",
+      "from": "reason",
+      "to": "claim_check",
+      "type": "flow",
+      "condition": "draft produced",
+      "handoff_contract": {
+        "payload": "answer draft and evidence context"
+      }
+    },
+    {
+      "id": "claim_check_to_evidence_audit",
+      "from": "claim_check",
+      "to": "evidence_audit",
+      "type": "flow",
+      "condition": "claims inspected",
+      "handoff_contract": {
+        "payload": "claim review record"
+      }
+    }
+  ]
+}
