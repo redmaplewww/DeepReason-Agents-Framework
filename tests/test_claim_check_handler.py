@@ -3,6 +3,10 @@ import unittest
 from pathlib import Path
 
 from reasoning_agent_template.config import AgentConfig
+from reasoning_agent_template.models import (
+    AgentState,
+    KnowledgeChunk,
+)
 from reasoning_agent_template.workflow import TemplateCoordinator
 
 
@@ -86,6 +90,70 @@ class ClaimCheckHandlerTests(unittest.TestCase):
         self.assertTrue(
             claim_review.get("required_follow_up"),
             msg="无证据时应给出后续检索或审计动作",
+        )
+
+    def test_claim_check_does_not_bind_unrelated_claims_to_any_chunk(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "火星有两颗天然卫星。"
+                "Python 列表是可变序列。"
+            ),
+            evidence_mode="required",
+            retrieval_results=[
+                KnowledgeChunk(
+                    source="test-knowledge.md",
+                    span="1-2",
+                    text=(
+                        "火星有两颗天然卫星，"
+                        "分别是火卫一和火卫二。"
+                    ),
+                    content_hash="mars-hash",
+                    score=1.0,
+                    evidence_id="ev-mars",
+                )
+            ],
+        )
+
+        coordinator._claim_check(state)
+
+        claim_review = state.claim_review
+
+        self.assertEqual(
+            claim_review.get("claims"),
+            [
+                "火星有两颗天然卫星",
+                "Python 列表是可变序列",
+            ],
+        )
+
+        self.assertEqual(
+            claim_review.get(
+                "claims_with_candidate_evidence"
+            ),
+            ["火星有两颗天然卫星"],
+            msg=(
+                "与火星有关的证据不应被绑定到 "
+                "Python 列表结论"
+            ),
+        )
+
+        self.assertEqual(
+            claim_review.get("unsupported_claims"),
+            ["Python 列表是可变序列"],
+            msg="无相关候选证据的结论应标记为 unsupported",
         )
 
 

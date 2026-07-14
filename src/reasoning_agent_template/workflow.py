@@ -267,24 +267,117 @@ class TemplateCoordinator:
             *state.external_results,
         ]
 
-        candidate_evidence_ids = [
-            item.id
-            for item in state.evidence
+        def text_terms(value: str) -> set[str]:
+            lowered = value.lower()
+
+            latin_terms = re.findall(
+                r"[a-z0-9_]{2,}",
+                lowered,
+            )
+
+            chinese_runs = re.findall(
+                r"[\u4e00-\u9fff]+",
+                lowered,
+            )
+
+            chinese_terms = [
+                run[index:index + 2]
+                for run in chinese_runs
+                for index in range(len(run) - 1)
+            ]
+
+            return set(
+                latin_terms + chinese_terms
+            )
+
+        def claim_matches_chunk(
+            claim: str,
+            chunk_text: str,
+        ) -> bool:
+            normalized_claim = re.sub(
+                r"[\W_]+",
+                "",
+                claim.lower(),
+            )
+            normalized_chunk = re.sub(
+                r"[\W_]+",
+                "",
+                chunk_text.lower(),
+            )
+
+            if (
+                normalized_claim
+                and normalized_claim in normalized_chunk
+            ):
+                return True
+
+            claim_terms = text_terms(claim)
+            chunk_terms = text_terms(chunk_text)
+
+            if not claim_terms:
+                return False
+
+            overlap = (
+                claim_terms
+                & chunk_terms
+            )
+
+            coverage = (
+                len(overlap)
+                / len(claim_terms)
+            )
+
+            return coverage >= 0.5
+
+        claim_evidence_bindings: dict[
+            str,
+            list[str],
+        ] = {}
+
+        for claim in claims:
+            matched_ids = [
+                chunk.evidence_id
+                for chunk in candidate_chunks
+                if (
+                    chunk.evidence_id
+                    and claim_matches_chunk(
+                        claim,
+                        chunk.text,
+                    )
+                )
+            ]
+
+            claim_evidence_bindings[claim] = list(
+                dict.fromkeys(matched_ids)
+            )
+
+        claims_with_candidate_evidence = [
+            claim
+            for claim in claims
+            if claim_evidence_bindings[claim]
         ]
 
-        claims_with_candidate_evidence = (
-            list(claims)
-            if candidate_chunks
-            else []
-        )
-
-        unsupported_claims = (
-            list(claims)
+        unsupported_claims = [
+            claim
+            for claim in claims
             if (
                 state.evidence_mode == "required"
-                and not candidate_chunks
+                and not claim_evidence_bindings[claim]
             )
-            else []
+        ]
+
+        candidate_evidence_ids = list(
+            dict.fromkeys(
+                [
+                    chunk.evidence_id
+                    for chunk in candidate_chunks
+                    if chunk.evidence_id
+                ]
+                + [
+                    item.id
+                    for item in state.evidence
+                ]
+            )
         )
 
         required_follow_up: list[str] = []
@@ -306,6 +399,9 @@ class TemplateCoordinator:
             "candidate_evidence_ids": (
                 candidate_evidence_ids
             ),
+            "claim_evidence_bindings": (
+                claim_evidence_bindings
+            ),
             "claims_with_candidate_evidence": (
                 claims_with_candidate_evidence
             ),
@@ -323,6 +419,7 @@ class TemplateCoordinator:
             f"发现 {len(unsupported_claims)} 条"
             "尚无候选证据支持的结论"
         )
+
 
     def _review_note(self, state: AgentState) -> None:
         state.verification_notes.append(f"{state.current_stage} review completed")
