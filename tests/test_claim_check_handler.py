@@ -371,6 +371,42 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_preserves_title_abbreviation_before_name(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "Dr. Smith leads the team. "
+                "Mars has two moons."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                "Dr. Smith leads the team",
+                "Mars has two moons",
+            ],
+            msg=(
+                "A title abbreviation before a name "
+                "should stay in the same claim"
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -254,6 +254,17 @@ class TemplateCoordinator:
             if lowered.endswith(("e.g.", "i.e.")):
                 return False
 
+            remainder = draft[index + 1:].lstrip()
+
+            if (
+                lowered.endswith(
+                    ("mr.", "mrs.", "ms.", "dr.", "prof.")
+                )
+                and remainder
+                and remainder[0].isupper()
+            ):
+                return False
+
             initialism = re.search(
                 r"(?:[A-Za-z]\.){2,}$",
                 segment,
