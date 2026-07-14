@@ -479,6 +479,48 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_keeps_chinese_closing_quote_with_claim(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "\u62a5\u544a\u5199\u9053"
+                "\u201c\u706b\u661f\u6709\u4e24\u9897"
+                "\u536b\u661f\u3002\u201d "
+                "Python lists are mutable."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                (
+                    "\u62a5\u544a\u5199\u9053"
+                    "\u201c\u706b\u661f\u6709\u4e24\u9897"
+                    "\u536b\u661f\u3002\u201d"
+                ),
+                "Python lists are mutable",
+            ],
+            msg=(
+                "A Chinese closing quote after sentence punctuation "
+                "should stay with the preceding claim"
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

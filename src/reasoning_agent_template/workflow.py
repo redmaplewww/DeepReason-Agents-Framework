@@ -309,6 +309,25 @@ class TemplateCoordinator:
                 split_here = should_split_period(index)
 
             if (
+                char in hard_boundaries
+                and index + 1 < len(draft)
+                and draft[index + 1] == "\u201d"
+            ):
+                split_here = False
+
+            if (
+                char == "\u201d"
+                and index > 0
+                and draft[index - 1] in hard_boundaries
+                and (
+                    index + 1 == len(draft)
+                    or draft[index + 1].isspace()
+                )
+            ):
+                split_here = True
+                include_boundary = True
+
+            if (
                 char == '"'
                 and index > 0
                 and draft[index - 1] == "."
