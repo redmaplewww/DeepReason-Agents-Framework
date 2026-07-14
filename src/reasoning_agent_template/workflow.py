@@ -235,10 +235,8 @@ class TemplateCoordinator:
     def _passthrough(self, state: AgentState) -> None:
         state.action_results.append(f"{state.current_stage} passthrough completed")
 
-    def _claim_check(self, state: AgentState) -> None:
-        """检查回答草稿中的结论与候选证据缺口。"""
-
-        draft = str(state.answer or "").strip()
+    @staticmethod
+    def _split_claims(draft: str) -> list[str]:
         claim_parts = re.split(
             r"[\u3002\uff01\uff1f\uff1b;!?\r\n]+|"
             r"(?<![eE]\.[gG])"
@@ -247,11 +245,17 @@ class TemplateCoordinator:
             draft,
         )
 
-        claims = [
+        return [
             part.strip()
             for part in claim_parts
             if part.strip()
         ]
+
+    def _claim_check(self, state: AgentState) -> None:
+        """检查回答草稿中的结论与候选证据缺口。"""
+
+        draft = str(state.answer or "").strip()
+        claims = self._split_claims(draft)
 
         candidate_chunks = [
             *state.retrieval_results,
