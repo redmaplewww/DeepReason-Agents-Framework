@@ -303,12 +303,30 @@ class TemplateCoordinator:
 
         for index, char in enumerate(draft):
             split_here = char in hard_boundaries
+            include_boundary = False
 
             if char == ".":
                 split_here = should_split_period(index)
 
+            if (
+                char == '"'
+                and index > 0
+                and draft[index - 1] == "."
+                and (
+                    index + 1 == len(draft)
+                    or draft[index + 1].isspace()
+                )
+            ):
+                split_here = True
+                include_boundary = True
+
             if split_here:
-                claim = draft[start:index].strip()
+                claim_end = (
+                    index + 1
+                    if include_boundary
+                    else index
+                )
+                claim = draft[start:claim_end].strip()
 
                 if claim:
                     claims.append(claim)

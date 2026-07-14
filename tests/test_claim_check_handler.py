@@ -443,6 +443,42 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_splits_after_quoted_sentence(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                'The report says "Mars has two moons." '
+                "Python lists are mutable."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                'The report says "Mars has two moons."',
+                "Python lists are mutable",
+            ],
+            msg=(
+                "A sentence-ending period before a closing quote "
+                "should still allow claim splitting"
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
