@@ -191,5 +191,42 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_preserves_dots_inside_domain_names(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "Official docs are at docs.python.org. "
+                "Mars has two moons."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                "Official docs are at docs.python.org",
+                "Mars has two moons",
+            ],
+            msg=(
+                "Claim splitting should preserve dots "
+                "inside domain names"
+            ),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
