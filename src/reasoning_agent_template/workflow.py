@@ -240,7 +240,10 @@ class TemplateCoordinator:
 
         draft = str(state.answer or "").strip()
         claim_parts = re.split(
-            r"[\u3002\uff01\uff1f\uff1b;!?\r\n]+|\.(?=\s|$)",
+            r"[\u3002\uff01\uff1f\uff1b;!?\r\n]+|"
+            r"(?<![eE]\.[gG])"
+            r"(?<![iI]\.[eE])"
+            r"\.(?=\s|$)",
             draft,
         )
 
