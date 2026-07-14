@@ -299,6 +299,42 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_splits_after_initialism_at_sentence_end(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "The office is in the U.S. "
+                "Mars has two moons."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                "The office is in the U.S",
+                "Mars has two moons",
+            ],
+            msg=(
+                "An initialism at sentence end should "
+                "still allow claim splitting"
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
