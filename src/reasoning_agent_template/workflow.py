@@ -237,22 +237,72 @@ class TemplateCoordinator:
 
     @staticmethod
     def _split_claims(draft: str) -> list[str]:
-        claim_parts = re.split(
-            r"[\u3002\uff01\uff1f\uff1b;!?\r\n]+|"
-            r"(?<![eE]\.[gG])"
-            r"(?<![iI]\.[eE])"
-            r"(?:"
-            r"(?<=[A-Za-z]\.[A-Za-z])\.(?=\s+[A-Z]|$)|"
-            r"(?<![A-Za-z]\.[A-Za-z])\.(?=\s|$)"
-            r")",
-            draft,
-        )
+        claims: list[str] = []
+        start = 0
+        hard_boundaries = set("\u3002\uff01\uff1f\uff1b;!?\r\n")
 
-        return [
-            part.strip()
-            for part in claim_parts
-            if part.strip()
-        ]
+        def should_split_period(index: int) -> bool:
+            if (
+                index + 1 < len(draft)
+                and not draft[index + 1].isspace()
+            ):
+                return False
+
+            segment = draft[start:index + 1].strip()
+            lowered = segment.lower()
+
+            if lowered.endswith(("e.g.", "i.e.")):
+                return False
+
+            initialism = re.search(
+                r"(?:[A-Za-z]\.){2,}$",
+                segment,
+            )
+
+            if initialism:
+                remainder = draft[index + 1:].lstrip()
+
+                if not remainder:
+                    return True
+
+                if remainder[0].isupper():
+                    prefix = (
+                        segment[:initialism.start()]
+                        .strip()
+                        .lower()
+                    )
+
+                    return prefix not in {
+                        "",
+                        "the",
+                        "a",
+                        "an",
+                    }
+
+                return False
+
+            return True
+
+        for index, char in enumerate(draft):
+            split_here = char in hard_boundaries
+
+            if char == ".":
+                split_here = should_split_period(index)
+
+            if split_here:
+                claim = draft[start:index].strip()
+
+                if claim:
+                    claims.append(claim)
+
+                start = index + 1
+
+        final_claim = draft[start:].strip()
+
+        if final_claim:
+            claims.append(final_claim)
+
+        return claims
 
     def _claim_check(self, state: AgentState) -> None:
         """检查回答草稿中的结论与候选证据缺口。"""

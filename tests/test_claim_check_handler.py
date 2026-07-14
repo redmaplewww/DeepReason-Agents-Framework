@@ -335,6 +335,42 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_preserves_initialism_before_proper_noun(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "The U.S. Army uses this system. "
+                "Mars has two moons."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                "The U.S. Army uses this system",
+                "Mars has two moons",
+            ],
+            msg=(
+                "An initialism before a proper noun "
+                "should stay in the same claim"
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
