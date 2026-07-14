@@ -407,6 +407,42 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ),
         )
 
+    def test_claim_check_preserves_etc_abbreviation_inside_claim(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
+
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "Use Python, Java, etc. for scripting. "
+                "Mars has two moons."
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                "Use Python, Java, etc. for scripting",
+                "Mars has two moons",
+            ],
+            msg=(
+                "The etc. abbreviation inside a claim "
+                "should not trigger claim splitting"
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -257,6 +257,13 @@ class TemplateCoordinator:
             remainder = draft[index + 1:].lstrip()
 
             if (
+                lowered.endswith("etc.")
+                and remainder
+                and remainder[0].islower()
+            ):
+                return False
+
+            if (
                 lowered.endswith(
                     ("mr.", "mrs.", "ms.", "dr.", "prof.")
                 )
