@@ -155,7 +155,41 @@ class ClaimCheckHandlerTests(unittest.TestCase):
             ["Python 列表是可变序列"],
             msg="无相关候选证据的结论应标记为 unsupported",
         )
+    def test_claim_check_preserves_decimal_points_inside_claims(
+        self,
+    ):
+        project_root = Path(__file__).resolve().parents[1]
 
+        config = AgentConfig.default(
+            workspace_root=project_root
+        )
+
+        coordinator = TemplateCoordinator(
+            config=config,
+            workspace_root=project_root,
+        )
+
+        state = AgentState(
+            answer=(
+                "模型准确率为 92.5%。"
+                "火星有两颗天然卫星。"
+            ),
+            evidence_mode="required",
+        )
+
+        coordinator._claim_check(state)
+
+        self.assertEqual(
+            state.claim_review.get("claims"),
+            [
+                "模型准确率为 92.5%",
+                "火星有两颗天然卫星",
+            ],
+            msg=(
+                "句子切分不应把数字内部的小数点"
+                "误认为句号"
+            ),
+        )
 
 if __name__ == "__main__":
     unittest.main()

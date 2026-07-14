@@ -239,27 +239,15 @@ class TemplateCoordinator:
         """检查回答草稿中的结论与候选证据缺口。"""
 
         draft = str(state.answer or "").strip()
-        normalized = draft
-
-        for punctuation in (
-            "。",
-            "！",
-            "？",
-            "；",
-            ";",
-            ".",
-            "!",
-            "?",
-        ):
-            normalized = normalized.replace(
-                punctuation,
-                "\n",
-            )
+        claim_parts = re.split(
+            r"[\u3002\uff01\uff1f\uff1b;!?\r\n]+|(?<!\d)\.|\.(?!\d)",
+            draft,
+        )
 
         claims = [
-            line.strip()
-            for line in normalized.splitlines()
-            if line.strip()
+            part.strip()
+            for part in claim_parts
+            if part.strip()
         ]
 
         candidate_chunks = [
