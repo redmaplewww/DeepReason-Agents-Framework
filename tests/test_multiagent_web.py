@@ -10,7 +10,8 @@ from urllib import request
 from reasoning_agent_template.config import AgentConfig, load_agent_config
 from reasoning_agent_template.llm import ChatResult, LLMRequestError, MissingApiKeyError
 from reasoning_agent_template.models import KnowledgeChunk, stable_hash
-from reasoning_agent_template.multiagent import MultiAgentOrchestrator
+from reasoning_agent_template.multiagent import MultiAgentOrchestrator, _merge_reviewer_route
+from reasoning_agent_template.sessions import SessionStore
 from reasoning_agent_template.web import create_server
 
 
@@ -151,6 +152,61 @@ def _structured_orchestrator(config, workspace_root, *, coordinator_route, revie
 
 
 class MultiAgentWebTests(unittest.TestCase):
+    def test_reviewer_cannot_weaken_coordinator_safety_route(self):
+        coordinator = {
+            "source": "llm",
+            "difficulty": "hard",
+            "workflow": "evidence_strict",
+            "evidence_mode": "required",
+            "evidence_strictness": "strict",
+            "risk_level": "high",
+            "category": "hard_reasoning",
+            "sources": ["rag", "web"],
+            "reasons": ["coordinator safety route"],
+            "confidence": 0.9,
+        }
+        reviewer = {
+            "review_status": "escalate",
+            "difficulty": "simple",
+            "workflow": "routine",
+            "evidence_mode": "optional",
+            "evidence_strictness": "none",
+            "risk_level": "none",
+            "category": "routine",
+            "findings": ["reviewer supplied a weaker route"],
+        }
+
+        merged = _merge_reviewer_route(coordinator, reviewer, fallback_message="test")
+
+        self.assertEqual(merged["evidence_mode"], "required")
+        self.assertEqual(merged["evidence_strictness"], "strict")
+        self.assertEqual(merged["risk_level"], "high")
+        self.assertEqual(merged["workflow"], "evidence_strict")
+        self.assertEqual(merged["reviewer_route_ignored"], "weaker_than_coordinator")
+
+    def test_session_store_restores_short_term_memory_across_orchestrators(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "knowledge").mkdir()
+            config = AgentConfig.default(workspace_root=root)
+            config.knowledge["directory"] = str(root / "knowledge")
+            store = SessionStore(root / "sessions")
+            first, _ = _fake_orchestrator(config=config, workspace_root=root, content="FIRST")
+            first.session_store = store
+            first.run("first thread message", thread_id="thread-1")
+
+            second, client = _fake_orchestrator(config=config, workspace_root=root, content="SECOND")
+            second.session_store = store
+            second.run("second thread message", thread_id="thread-1")
+
+        self.assertTrue(
+            any(
+                "first thread message" in str(message.content)
+                for call in client.calls
+                for message in call["messages"]
+            )
+        )
+
     def test_multi_agent_debug_payload_contains_required_monitors(self):
         orchestrator, _client = _fake_orchestrator()
 
@@ -169,7 +225,9 @@ class MultiAgentWebTests(unittest.TestCase):
         self.assertGreaterEqual(len(payload["agents"]), 6)
         self.assertEqual(payload["agents"][0]["name"], "coordinator")
         self.assertEqual(payload["state_machine"]["current"], "respond")
-        self.assertIn("retrieve", payload["state_machine"]["trace"])
+        self.assertNotIn("retrieve", payload["state_machine"]["trace"])
+        retrieve_node = next(node for node in payload["workflow"]["nodes"] if node["id"] == "retrieve")
+        self.assertEqual(retrieve_node["effective_status"], "skipped")
         self.assertEqual(payload["workflow"]["status"], "completed")
         self.assertGreaterEqual(len(payload["workflow"]["nodes"]), 10)
         self.assertGreaterEqual(len(payload["workflow"]["edges"]), 9)
@@ -522,7 +580,7 @@ class MultiAgentWebTests(unittest.TestCase):
         self.assertEqual(payload["evidence"]["strictness"], "strict")
         self.assertEqual(payload["evidence"]["category"], "academic")
         self.assertEqual(payload["gates"]["decisions"][-1]["status"], "interrupt")
-        retrieve.assert_called_once()
+        self.assertEqual(retrieve.call_count, 2)
 
     def test_payload_exposes_external_search_diagnostics_and_consolidation(self):
         workspace = tempfile.TemporaryDirectory()

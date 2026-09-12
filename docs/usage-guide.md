@@ -1,6 +1,6 @@
 # DeepReason Agents Framework 使用指南
 
-这份指南说明如何把 DeepReason Agents Framework 当成一个可二开的重推理 Agent 框架使用，而不是只当作演示项目运行。更完整的界面说明、功能区说明和学习路径见 [用户手册与学习手册](user-manual.md)。
+这份指南说明如何把 DeepReason Agents Framework 当成一个可二开的重推理 Agent 框架使用，而不是只当作演示项目运行。更完整的界面说明、功能区说明和学习路径见 [用户手册与学习手册](user-manual.md)；本次安全与运行时硬化记录见 [AgentOps 硬化审查记录](agentops-hardening.md)。
 
 ## 1. 运行方式
 
@@ -87,6 +87,7 @@ flowchart TD
 | `skills/` | 放约束包和行为流程，适合沉淀“证据优先”“最小修改”等强规则。 |
 | `evidence/ledger.jsonl` | 运行生成的证据账本，通常不作为源码提交。 |
 | `evolution/proposals/` | 自进化提案，人工审查后再应用。 |
+| `sessions/` | CLI/Web 的本地线程快照，自动恢复短期上下文；已被 `.gitignore` 排除。 |
 
 ## 4. 任务难度与证据触发
 
@@ -95,6 +96,8 @@ flowchart TD
 - 简单聊天：不强制证据。
 - 中等技术问题：允许有限证据，证据不足时仍可输出但要在 telemetry 中标记。
 - 困难、学术、事实判断、高风险问题：必须尽可能检索本地 RAG、外部论文/网页、用户经验；证据不足会被 gate 打回或受限输出。
+
+工作流按图上的实际边执行：普通任务从 `plan` 直接进入 `reason`；需要证据时才进入 `retrieve`。严格证据缺口会按 `runtime.workflow_retry_limit` 受控重试，超过 `runtime.workflow_max_steps` 会停止并留下遥测。
 
 触发不是靠关键词硬编码，而是由 coordinator 与 reviewer 对任务难度、风险、时效性、事实性和可验证性做综合判断。
 

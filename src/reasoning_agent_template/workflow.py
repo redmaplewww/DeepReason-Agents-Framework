@@ -23,6 +23,7 @@ from reasoning_agent_template.models import (
 from reasoning_agent_template.risk import classify_evidence_requirement
 from reasoning_agent_template.workflow_spec import (
     BUILTIN_STAGE_HANDLERS,
+    WorkflowEdgeSpec,
     WorkflowNodeSpec,
     load_workflow_spec,
 )
@@ -110,7 +111,28 @@ class TemplateCoordinator:
         state = AgentState(user_goal=user_goal)
         if routing_decision:
             state.routing_decision = dict(routing_decision)
-        for node in self.workflow_spec.execution_nodes():
+        node_map = self.workflow_spec.node_map()
+        current = self.workflow_spec.start_node
+        retry_counts: dict[str, int] = {}
+        max_steps = max(1, int(self.config.runtime.get("workflow_max_steps", 32)))
+        max_retries = max(0, int(self.config.runtime.get("workflow_retry_limit", 1)))
+        steps = 0
+        while current:
+            if steps >= max_steps:
+                state.stage_events.append(
+                    {
+                        "time": utc_now(),
+                        "agent": "coordinator",
+                        "stage": current,
+                        "kind": "workflow_step_limit",
+                        "message": f"workflow stopped at max steps={max_steps}",
+                    }
+                )
+                self._emit_progress(state, state.stage_events[-1])
+                break
+            node = node_map.get(current)
+            if node is None:
+                raise ValueError(f"workflow selected unknown node: {current}")
             stage = node.id
             started = perf_counter()
             state.current_stage = stage
@@ -137,6 +159,46 @@ class TemplateCoordinator:
                 }
             )
             self._emit_progress(state, state.stage_events[-1])
+            if stage in self.workflow_spec.terminal_nodes:
+                break
+            edge = self._select_next_edge(
+                stage,
+                state,
+                retry_counts=retry_counts,
+                max_retries=max_retries,
+            )
+            if edge is None:
+                state.stage_events.append(
+                    {
+                        "time": utc_now(),
+                        "agent": "coordinator",
+                        "stage": stage,
+                        "kind": "workflow_terminated",
+                        "message": f"no eligible outgoing edge from {stage}",
+                    }
+                )
+                self._emit_progress(state, state.stage_events[-1])
+                break
+            if edge.type == "retry":
+                retry_counts[edge.id] = retry_counts.get(edge.id, 0) + 1
+                retry_counts["__total__"] = retry_counts.get("__total__", 0) + 1
+            state.stage_events.append(
+                {
+                    "time": utc_now(),
+                    "agent": "coordinator",
+                    "stage": stage,
+                    "kind": "edge_selected",
+                    "edge_id": edge.id,
+                    "edge_type": edge.type,
+                    "from": edge.from_node,
+                    "to": edge.to_node,
+                    "condition": edge.condition,
+                    "retry_count": retry_counts.get(edge.id, 0),
+                }
+            )
+            self._emit_progress(state, state.stage_events[-1])
+            current = edge.to_node
+            steps += 1
         return WorkflowResult(
             answer=state.answer,
             state=state,
@@ -144,6 +206,40 @@ class TemplateCoordinator:
             evidence=list(state.evidence),
             gate_decisions=list(state.gate_decisions),
         )
+
+    def _select_next_edge(
+        self,
+        stage: str,
+        state: AgentState,
+        *,
+        retry_counts: dict[str, int],
+        max_retries: int,
+    ) -> WorkflowEdgeSpec | None:
+        edges = self.workflow_spec.outgoing_edges(stage)
+        if not edges:
+            return None
+        if stage == "plan":
+            wanted = "retrieve" if state.evidence_mode == "required" else "reason"
+            return next((edge for edge in edges if edge.to_node == wanted), None)
+        for edge in edges:
+            if edge.type == "retry" and retry_counts.get("__total__", 0) < max_retries:
+                if stage == "evidence_audit" and self._strict_evidence_gap(state):
+                    return edge
+                if stage == "gate" and state.gate_decisions:
+                    latest = state.gate_decisions[-1]
+                    if latest.status != "allow" and state.evidence_status != "protected_denied":
+                        return edge
+        if stage == "consolidate" and bool(state.evidence_consolidation_proposals):
+            if self.config.runtime.get("workflow_allow_proposal_loop", False):
+                loop = next((edge for edge in edges if edge.type == "loop"), None)
+                if loop is not None and retry_counts.get("__total__", 0) < max_retries:
+                    return loop
+        return next((edge for edge in edges if edge.type == "flow"), edges[0])
+
+    def _strict_evidence_gap(self, state: AgentState) -> bool:
+        if state.evidence_mode != "required" or state.evidence_strictness != "strict":
+            return False
+        return not self._qualified_gate_evidence(state)
 
     def _emit_progress(self, state: AgentState, event: dict[str, Any]) -> None:
         if self.event_callback is not None:

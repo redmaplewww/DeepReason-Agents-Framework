@@ -23,6 +23,7 @@ from reasoning_agent_template.memory import (
 from reasoning_agent_template.models import AgentState, stable_hash, utc_now
 from reasoning_agent_template.risk import classify_evidence_requirement, is_explicit_evidence_request
 from reasoning_agent_template.skills import SkillRegistry
+from reasoning_agent_template.sessions import SessionStore
 from reasoning_agent_template.workflow import TemplateCoordinator
 from reasoning_agent_template.workflow_spec import WorkflowNodeSpec, WorkflowSpec, WorkflowSpecStore
 
@@ -88,10 +89,12 @@ class MultiAgentOrchestrator:
         config: AgentConfig,
         workspace_root: str | Path,
         llm_client_factory: Callable[[AgentConfig], ChatClient] | None = None,
+        session_store: SessionStore | None = None,
     ):
         self.config = config
         self.workspace_root = Path(workspace_root)
         self.llm_client_factory = llm_client_factory
+        self.session_store = session_store
         self.workflow_store = WorkflowSpecStore(self.workspace_root, self.config.runtime)
         self.agents_store = AgentsSpecStore(self.workspace_root, self.config.runtime)
         self.short_term_memories: dict[str, ShortTermConversationMemory] = {}
@@ -201,6 +204,22 @@ class MultiAgentOrchestrator:
 
             memory_writes = self._write_explicit_long_term_memory(message)
             short_term_memory_store.append(user=message, assistant=answer, run_id=run_id)
+            if self.session_store is not None:
+                session_messages: list[dict[str, Any]] = []
+                for item in short_term_memory_store.snapshot():
+                    session_messages.extend(
+                        [
+                            {"role": "user", "content": item["user"], "run_id": item["run_id"]},
+                            {"role": "assistant", "content": item["assistant"], "run_id": item["run_id"]},
+                        ]
+                    )
+                self.session_store.record_snapshot(
+                    session_id=thread_id,
+                    messages=session_messages,
+                    events=events[-120:],
+                    status="completed",
+                    metadata={"run_id": run_id, "thread_id": thread_id},
+                )
             long_term_after = self._load_long_term_memories(
                 limit=int(self.config.memory.get("prompt_long_term_items", 12))
             )
@@ -896,14 +915,14 @@ class MultiAgentOrchestrator:
         }
 
     def _workflow_effect(self, stage: str, state: AgentState, *, completed: set[str]) -> dict[str, Any]:
-        if stage not in completed:
-            return {"effective_status": "pending", "work_done": False, "skip_reason": ""}
         if stage == "retrieve" and state.evidence_mode != "required":
             return {
                 "effective_status": "skipped",
                 "work_done": False,
                 "skip_reason": "evidence_not_required",
             }
+        if stage not in completed:
+            return {"effective_status": "pending", "work_done": False, "skip_reason": ""}
         if stage == "evidence_audit" and state.evidence_mode != "required":
             return {
                 "effective_status": "skipped",
@@ -1668,9 +1687,31 @@ class MultiAgentOrchestrator:
 
     def _short_term_memory_for(self, thread_id: str) -> ShortTermConversationMemory:
         if thread_id not in self.short_term_memories:
-            self.short_term_memories[thread_id] = ShortTermConversationMemory(
+            memory = ShortTermConversationMemory(
                 max_turns=int(self.config.memory.get("short_term_turns", 8))
             )
+            if self.session_store is not None:
+                try:
+                    snapshot = self.session_store.load(thread_id)
+                except FileNotFoundError:
+                    snapshot = None
+                if snapshot is not None:
+                    turns: list[dict[str, Any]] = []
+                    current: dict[str, Any] = {}
+                    for message in snapshot.messages:
+                        role = str(message.get("role", ""))
+                        if role == "user":
+                            if current:
+                                turns.append(current)
+                            current = {"user": message.get("content", ""), "run_id": message.get("run_id", "restored")}
+                        elif role == "assistant" and current:
+                            current["assistant"] = message.get("content", "")
+                            turns.append(current)
+                            current = {}
+                    if current:
+                        turns.append(current)
+                    memory.restore(turns)
+            self.short_term_memories[thread_id] = memory
         return self.short_term_memories[thread_id]
 
     def _memory_root(self) -> Path:
@@ -1867,18 +1908,53 @@ def _merge_reviewer_route(
     fallback_message: str,
 ) -> dict[str, Any]:
     status = str(reviewer.get("review_status", "approve"))
-    should_apply = status in {"escalate", "revise"} or _reviewer_is_stricter(coordinator_route, reviewer)
+    reviewer_stricter = _reviewer_is_stricter(coordinator_route, reviewer)
+    should_apply = reviewer_stricter
     if should_apply:
         merged = dict(coordinator_route)
-        for key in ROUTE_KEYS:
-            if key in reviewer:
-                merged[key] = reviewer[key]
+        if RISK_ORDER.get(str(reviewer.get("risk_level", "none")), 0) > RISK_ORDER.get(
+            str(merged.get("risk_level", "none")), 0
+        ):
+            merged["risk_level"] = reviewer["risk_level"]
+        if DIFFICULTY_ORDER.get(str(reviewer.get("difficulty", "simple")), 0) > DIFFICULTY_ORDER.get(
+            str(merged.get("difficulty", "simple")), 0
+        ):
+            merged["difficulty"] = reviewer["difficulty"]
+        if reviewer.get("evidence_mode") == "required":
+            merged["evidence_mode"] = "required"
+        if STRICTNESS_ORDER.get(str(reviewer.get("evidence_strictness", "none")), 0) > STRICTNESS_ORDER.get(
+            str(merged.get("evidence_strictness", "none")), 0
+        ):
+            merged["evidence_strictness"] = reviewer["evidence_strictness"]
+        if reviewer.get("category") and merged.get("category") in {None, "routine"}:
+            merged["category"] = reviewer["category"]
+        merged["sources"] = _dedupe_strings(
+            [*_list_of_strings(merged.get("sources")), *_list_of_strings(reviewer.get("sources"))]
+        )
+        merged["reasons"] = _dedupe_strings(
+            [*_list_of_strings(merged.get("reasons")), *_list_of_strings(reviewer.get("reasons")), *_list_of_strings(reviewer.get("findings"))]
+        )
+        merged["workflow"] = _workflow_for_route(
+            str(merged.get("evidence_mode", "optional")),
+            str(merged.get("risk_level", "none")),
+            str(merged.get("category", "routine")),
+            str(merged.get("evidence_strictness", "none")),
+        )
         source = "llm+reviewer" if str(coordinator_route.get("source")) == "llm" else f"{coordinator_route.get('source', 'route')}+reviewer"
         final = _normalize_route_decision(merged, source=source, fallback_message=fallback_message)
     else:
         final = dict(coordinator_route)
+        if status in {"escalate", "revise"}:
+            final["reasons"] = _dedupe_strings(
+                [*_list_of_strings(coordinator_route.get("reasons")), *_list_of_strings(reviewer.get("findings"))]
+            )
+            final["reviewer_route_ignored"] = "weaker_than_coordinator"
     final["reviewer"] = reviewer
     return final
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(value for value in values if value))
 
 
 def _reviewer_is_stricter(coordinator_route: dict[str, Any], reviewer: dict[str, Any]) -> bool:

@@ -26,8 +26,12 @@ class EvidenceLedger:
     ) -> EvidenceItem:
         content_hash = stable_hash(content)
         identity = stable_hash("|".join([source_type, uri, locator, content_hash]))
+        evidence_id = f"ev_{identity[:12]}"
+        for existing in self.list():
+            if existing.id == evidence_id:
+                return existing
         item = EvidenceItem(
-            id=f"ev_{identity[:12]}",
+            id=evidence_id,
             source_type=source_type,
             uri=uri,
             locator=locator,

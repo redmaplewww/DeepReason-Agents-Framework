@@ -44,7 +44,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(code, 0, stderr)
         self.assertIn("ANSWER=CLI_DEEPSEEK_MARK", stdout)
-        self.assertIn("TRACE=intake -> plan -> retrieve", stdout)
+        self.assertIn("TRACE=intake -> plan -> reason -> evidence_audit", stdout)
         self.assertIn("GATE=allow", stdout)
         self.assertIn("LLM=called", stdout)
         self.assertIn("EVIDENCE_MODE=optional", stdout)

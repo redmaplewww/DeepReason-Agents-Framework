@@ -6,9 +6,11 @@ The OpenClaude reference is distilled as architecture, not copied source. See
 `docs/openclaude-distillation.md` for the keep/plugin/leave-out map and the
 first lightweight runtime boundary.
 
-The required path is:
+The default graph is not a fixed required path. The normal path is:
 
-`intake -> plan -> retrieve -> reason -> evidence_audit -> gate -> act_or_answer -> verify -> consolidate -> respond`
+`intake -> plan -> reason -> evidence_audit -> gate -> act_or_answer -> verify -> consolidate -> respond`
+
+When evidence is required, `plan` branches to `retrieve`. Strict evidence gaps and blocked gates can take one configured retry edge before the run terminates. The runtime enforces `workflow_max_steps` and `workflow_retry_limit`; graph edges are telemetry-backed execution decisions, not decorative metadata.
 
 Core constraints live in local skills under `skills/`. They are loaded by metadata first and opened only when relevant. Evidence is stored in `evidence/ledger.jsonl`, memory is partitioned under `memory/`, and self-evolution writes proposals under `evolution/proposals/`.
 

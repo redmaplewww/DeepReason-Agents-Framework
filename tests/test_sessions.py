@@ -58,6 +58,15 @@ class SessionStoreTests(unittest.TestCase):
                     status="completed",
                 )
 
+    def test_delete_removes_a_session_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SessionStore(Path(tmp) / "sessions")
+            store.record_snapshot(session_id="delete-me", messages=[], events=[], status="completed")
+            store.delete("delete-me")
+
+            with self.assertRaises(FileNotFoundError):
+                store.load("delete-me")
+
 
 if __name__ == "__main__":
     unittest.main()

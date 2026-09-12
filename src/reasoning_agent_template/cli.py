@@ -11,6 +11,7 @@ from typing import Sequence
 from reasoning_agent_template.config import load_agent_config
 from reasoning_agent_template.llm import ChatMessage, DeepSeekChatClient, LLMRequestError, MissingApiKeyError
 from reasoning_agent_template.multiagent import MultiAgentOrchestrator
+from reasoning_agent_template.sessions import SessionStore
 from reasoning_agent_template.rag_eval import evaluate_knowledge_base, format_markdown_report, load_cases
 from reasoning_agent_template.skills import SkillRegistry
 from reasoning_agent_template.web import serve
@@ -77,7 +78,11 @@ def _cmd_chat(args: argparse.Namespace) -> int:
     workspace = Path(args.workspace)
     config = load_agent_config(config_path)
     try:
-        payload = MultiAgentOrchestrator(config=config, workspace_root=workspace).run(" ".join(args.question))
+        payload = MultiAgentOrchestrator(
+            config=config,
+            workspace_root=workspace,
+            session_store=SessionStore(workspace / "sessions"),
+        ).run(" ".join(args.question))
     except (MissingApiKeyError, LLMRequestError) as exc:
         print(f"DeepSeek chat failed: {exc}", file=sys.stderr)
         return 2

@@ -17,6 +17,7 @@ from reasoning_agent_template.config import load_agent_config
 from reasoning_agent_template.knowledge import LocalKnowledgeBase
 from reasoning_agent_template.llm import ChatMessage, DeepSeekChatClient, LLMRequestError, MissingApiKeyError
 from reasoning_agent_template.multiagent import ChatClient, MultiAgentOrchestrator
+from reasoning_agent_template.sessions import SessionStore
 from reasoning_agent_template.skills import SkillRegistry
 from reasoning_agent_template.workflow_spec import WorkflowSpec, WorkflowSpecStore
 
@@ -35,10 +36,13 @@ def create_server(
 ) -> ThreadingHTTPServer:
     workspace = Path(workspace_root)
     config = load_agent_config(Path(config_path))
+    if host not in {"127.0.0.1", "localhost", "::1"} and not bool(config.runtime.get("allow_non_localhost", False)):
+        raise ValueError("non-localhost binding is disabled; set runtime.allow_non_localhost=true only on a trusted network")
     orchestrator = MultiAgentOrchestrator(
         config=config,
         workspace_root=workspace,
         llm_client_factory=llm_client_factory,
+        session_store=SessionStore(workspace / "sessions"),
     )
     handler = _make_handler(
         orchestrator=orchestrator,

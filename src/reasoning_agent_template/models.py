@@ -151,6 +151,7 @@ class EvolutionProposal:
 class RuntimeHandle:
     backend: str
     invoke: Callable[[dict[str, Any]], Any]
+    degraded_reason: str | None = None
 
 
 @dataclass(frozen=True)

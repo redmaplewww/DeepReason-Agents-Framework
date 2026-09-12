@@ -183,7 +183,20 @@ class WorkflowSpecTests(unittest.TestCase):
             result = coordinator.run("hello")
 
         self.assertTrue(validation.ok, validation.to_dict())
-        self.assertEqual(result.stage_trace, spec.node_ids())
+        self.assertEqual(
+            result.stage_trace,
+            [
+                "intake",
+                "plan",
+                "reason",
+                "evidence_audit",
+                "gate",
+                "act_or_answer",
+                "verify",
+                "consolidate",
+                "respond",
+            ],
+        )
         self.assertEqual(result.state.current_stage, "respond")
 
     def test_workflow_validation_rejects_missing_edges_and_protected_deletion(self):

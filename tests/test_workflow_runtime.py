@@ -30,7 +30,6 @@ class WorkflowRuntimeTests(unittest.TestCase):
                 [
                     "intake",
                     "plan",
-                    "retrieve",
                     "reason",
                     "evidence_audit",
                     "gate",
@@ -111,7 +110,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
             self.assertEqual(result.state.evidence_category, "current_factual")
             self.assertEqual(result.state.evidence_strictness, "strict")
             self.assertEqual(result.gate_decisions[-1].status, "interrupt")
-            retrieve.assert_called_once()
+            self.assertEqual(retrieve.call_count, 2)
 
     def test_academic_research_question_requires_external_paper_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -206,7 +205,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
             self.assertEqual(result.state.evidence_strictness, "strict")
             self.assertIn("web", result.state.evidence_sources)
             self.assertEqual(result.gate_decisions[-1].status, "interrupt")
-            retrieve.assert_called_once()
+            self.assertEqual(retrieve.call_count, 2)
 
     def test_hard_reasoning_still_interrupts_without_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -227,7 +226,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
             self.assertEqual(result.state.evidence_category, "hard_reasoning")
             self.assertEqual(result.state.evidence_strictness, "strict")
             self.assertEqual(result.gate_decisions[-1].status, "interrupt")
-            retrieve.assert_called_once()
+            self.assertEqual(retrieve.call_count, 2)
 
     def test_technical_why_question_autonomously_requires_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:

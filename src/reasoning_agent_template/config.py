@@ -81,6 +81,10 @@ class AgentConfig:
             },
             runtime={
                 "prefer_deepagents": False,
+                "workflow_max_steps": 32,
+                "workflow_retry_limit": 1,
+                "workflow_allow_proposal_loop": False,
+                "allow_non_localhost": False,
                 "workflow_spec": "configs/workflows/default.workflow.json",
                 "workflow_draft": "configs/workflows/default.workflow.draft.json",
                 "workflow_proposal_dir": "configs/workflows/proposals",

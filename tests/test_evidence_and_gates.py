@@ -26,6 +26,30 @@ class EvidenceAndGateTests(unittest.TestCase):
             self.assertEqual(item.used_for, ["claim:traceability"])
             self.assertEqual(ledger.list()[0].id, item.id)
 
+    def test_duplicate_evidence_identity_is_not_appended_twice(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = EvidenceLedger(Path(tmp) / "evidence.jsonl")
+            first = ledger.record(
+                source_type="web",
+                uri="https://example.test/source",
+                locator="section 1",
+                content="same source content",
+                summary="summary",
+                confidence=0.8,
+            )
+            second = ledger.record(
+                source_type="web",
+                uri="https://example.test/source",
+                locator="section 1",
+                content="same source content",
+                summary="different summary",
+                confidence=0.9,
+            )
+            rows = ledger.list()
+
+        self.assertEqual(first.id, second.id)
+        self.assertEqual(len(rows), 1)
+
     def test_high_risk_actions_interrupt_without_evidence_and_allow_with_approval(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)

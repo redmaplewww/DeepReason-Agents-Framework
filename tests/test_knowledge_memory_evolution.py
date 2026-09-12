@@ -240,6 +240,16 @@ class KnowledgeMemoryEvolutionTests(unittest.TestCase):
             self.assertEqual(shared.decision.status, "deny")
             self.assertEqual(store.read("shared", "global_rule"), None)
 
+    def test_long_term_memory_rejects_path_traversal_partitions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gate = GatePolicy(workspace_root=root, approval_required_actions=[])
+            store = LongTermMemoryStore(root / "memory", gate_policy=gate)
+
+            for partition in ["../outside", "C:\\outside", "shared/..", ""]:
+                with self.subTest(partition=partition), self.assertRaises(ValueError):
+                    store.list_partition(partition)
+
     def test_self_evolution_generates_proposals_without_mutating_skills(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

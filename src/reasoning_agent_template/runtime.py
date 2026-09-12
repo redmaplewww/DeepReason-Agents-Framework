@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -51,6 +52,8 @@ class RuntimeTool:
     input_schema: dict[str, Any] = field(default_factory=dict)
     target_path_argument: str | None = None
     approved_by: str | None = None
+    timeout_seconds: float | None = None
+    idempotency_key_argument: str | None = None
 
     def to_model_schema(self) -> dict[str, Any]:
         return {
@@ -112,6 +115,7 @@ class AgentRuntime:
         self.approved_by = approved_by
         self.session_store = session_store
         self.session_id = session_id
+        self._idempotency_results: dict[str, str] = {}
 
     def run(self, prompt: str) -> AgentRuntimeResult:
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
@@ -233,28 +237,84 @@ class AgentRuntime:
                             tool_steps=tool_steps,
                         )
 
-                try:
-                    output = tool.action(dict(tool_call.arguments))
-                except Exception as exc:
+                validation_errors = _validate_tool_arguments(tool.input_schema, tool_call.arguments)
+                if validation_errors:
                     events.append(
                         {
                             "time": utc_now(),
-                            "kind": "tool_failed",
+                            "kind": "tool_validation_failed",
                             "tool": tool.name,
-                            "error": str(exc),
+                            "errors": validation_errors,
                         }
                     )
                     return self._result(
                         status="failed",
-                        answer=str(exc),
+                        answer=f"Invalid arguments for {tool.name}: {'; '.join(validation_errors)}",
                         messages=messages,
                         events=events,
                         gate_decisions=gate_decisions,
                         tool_steps=tool_steps,
                     )
 
+                idempotency_key = None
+                if tool.idempotency_key_argument:
+                    raw_key = tool_call.arguments.get(tool.idempotency_key_argument)
+                    if raw_key is not None and str(raw_key).strip():
+                        idempotency_key = f"{tool.name}:{str(raw_key).strip()}"
+                if idempotency_key in self._idempotency_results:
+                    content = self._idempotency_results[idempotency_key]
+                    events.append(
+                        {
+                            "time": utc_now(),
+                            "kind": "tool_deduplicated",
+                            "tool": tool.name,
+                            "call_id": tool_call.call_id,
+                            "idempotency_key": idempotency_key,
+                        }
+                    )
+                    output = content
+                else:
+                    try:
+                        output = _invoke_tool(tool, dict(tool_call.arguments))
+                    except FutureTimeoutError:
+                        events.append(
+                            {
+                                "time": utc_now(),
+                                "kind": "tool_timed_out",
+                                "tool": tool.name,
+                                "timeout_seconds": tool.timeout_seconds,
+                            }
+                        )
+                        return self._result(
+                            status="failed",
+                            answer=f"Tool timed out: {tool.name}",
+                            messages=messages,
+                            events=events,
+                            gate_decisions=gate_decisions,
+                            tool_steps=tool_steps,
+                        )
+                    except Exception as exc:
+                        events.append(
+                            {
+                                "time": utc_now(),
+                                "kind": "tool_failed",
+                                "tool": tool.name,
+                                "error": str(exc),
+                            }
+                        )
+                        return self._result(
+                            status="failed",
+                            answer=str(exc),
+                            messages=messages,
+                            events=events,
+                            gate_decisions=gate_decisions,
+                            tool_steps=tool_steps,
+                        )
+                    content = _stringify_tool_result(output)
+                    if idempotency_key:
+                        self._idempotency_results[idempotency_key] = content
+
                 tool_steps += 1
-                content = _stringify_tool_result(output)
                 messages.append(
                     {
                         "role": "tool",
@@ -341,6 +401,44 @@ def _stringify_tool_result(value: Any) -> str:
         return str(value)
 
 
+def _invoke_tool(tool: RuntimeTool, arguments: dict[str, Any]) -> Any:
+    if tool.timeout_seconds is None:
+        return tool.action(arguments)
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(tool.action, arguments)
+    try:
+        return future.result(timeout=max(0.001, float(tool.timeout_seconds)))
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _validate_tool_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> list[str]:
+    if not schema:
+        return []
+    errors: list[str] = []
+    if schema.get("type", "object") != "object" or not isinstance(arguments, dict):
+        return ["arguments must be an object"]
+    for name in schema.get("required", []):
+        if name not in arguments:
+            errors.append(f"missing required field: {name}")
+    for name, property_schema in dict(schema.get("properties", {})).items():
+        if name not in arguments or not isinstance(property_schema, dict):
+            continue
+        expected = property_schema.get("type")
+        value = arguments[name]
+        valid = {
+            "string": isinstance(value, str),
+            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+            "integer": isinstance(value, int) and not isinstance(value, bool),
+            "boolean": isinstance(value, bool),
+            "array": isinstance(value, list),
+            "object": isinstance(value, dict),
+        }.get(expected, True)
+        if not valid:
+            errors.append(f"{name} must be {expected}")
+    return errors
+
+
 def create_deep_agent_runtime(
     *,
     config: AgentConfig,
@@ -367,8 +465,12 @@ def create_deep_agent_runtime(
                 interrupt_on=interrupt_on,
             )
             return RuntimeHandle(backend="deepagents", invoke=agent.invoke)
-        except Exception:
-            pass
+        except Exception as exc:
+            return RuntimeHandle(
+                backend="fallback",
+                invoke=lambda payload: {"messages": payload.get("messages", [])},
+                degraded_reason=f"deepagents initialization failed: {type(exc).__name__}: {exc}",
+            )
 
     return RuntimeHandle(backend="fallback", invoke=lambda payload: {"messages": payload.get("messages", [])})
 

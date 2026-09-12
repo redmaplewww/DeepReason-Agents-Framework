@@ -1,4 +1,5 @@
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -170,6 +171,104 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertEqual(loaded.status, "completed")
         self.assertEqual(loaded.messages, result.messages)
         self.assertEqual(loaded.events, result.events)
+
+    def test_runtime_validates_tool_arguments_before_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = AgentConfig.default(workspace_root=Path(tmp))
+            model = FakeToolModel(
+                [
+                    ToolModelResponse(
+                        content="call",
+                        tool_calls=[ToolCall(call_id="call_1", name="typed", arguments={})],
+                    )
+                ]
+            )
+            executed = []
+            runtime = AgentRuntime(
+                config=config,
+                model=model,
+                tools=[
+                    RuntimeTool(
+                        name="typed",
+                        description="typed tool",
+                        action=lambda args: executed.append(args),
+                        input_schema={
+                            "type": "object",
+                            "required": ["value"],
+                            "properties": {"value": {"type": "string"}},
+                        },
+                    )
+                ],
+            )
+            result = runtime.run("invalid")
+
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(executed, [])
+        self.assertTrue(any(event["kind"] == "tool_validation_failed" for event in result.events))
+
+    def test_runtime_deduplicates_idempotent_tool_calls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = AgentConfig.default(workspace_root=Path(tmp))
+            model = FakeToolModel(
+                [
+                    ToolModelResponse(
+                        content="first",
+                        tool_calls=[ToolCall(call_id="call_1", name="write", arguments={"key": "k"})],
+                    ),
+                    ToolModelResponse(
+                        content="second",
+                        tool_calls=[ToolCall(call_id="call_2", name="write", arguments={"key": "k"})],
+                    ),
+                    ToolModelResponse(content="done"),
+                ]
+            )
+            executed = []
+            runtime = AgentRuntime(
+                config=config,
+                model=model,
+                tools=[
+                    RuntimeTool(
+                        name="write",
+                        description="idempotent write",
+                        action=lambda args: (executed.append(args["key"]) or "ok"),
+                        input_schema={"type": "object", "required": ["key"]},
+                        idempotency_key_argument="key",
+                    )
+                ],
+            )
+            result = runtime.run("write twice")
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(executed, ["k"])
+        self.assertTrue(any(event["kind"] == "tool_deduplicated" for event in result.events))
+
+    def test_runtime_reports_tool_timeout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = AgentConfig.default(workspace_root=Path(tmp))
+            model = FakeToolModel(
+                [
+                    ToolModelResponse(
+                        content="slow",
+                        tool_calls=[ToolCall(call_id="call_1", name="slow", arguments={})],
+                    )
+                ]
+            )
+            runtime = AgentRuntime(
+                config=config,
+                model=model,
+                tools=[
+                    RuntimeTool(
+                        name="slow",
+                        description="slow",
+                        action=lambda args: time.sleep(0.05),
+                        timeout_seconds=0.001,
+                    )
+                ],
+            )
+            result = runtime.run("slow")
+
+        self.assertEqual(result.status, "failed")
+        self.assertTrue(any(event["kind"] == "tool_timed_out" for event in result.events))
 
 
 if __name__ == "__main__":

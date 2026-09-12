@@ -108,6 +108,14 @@ class SessionStore:
             metadata={**source.metadata, "forked_from": source.session_id},
         )
 
+    def delete(self, session_id: str) -> None:
+        path = self._snapshot_path(session_id)
+        if path.exists():
+            path.unlink()
+        parent = path.parent
+        if parent.exists() and not any(parent.iterdir()):
+            parent.rmdir()
+
     def _write(self, snapshot: SessionSnapshot) -> None:
         path = self._snapshot_path(snapshot.session_id)
         path.parent.mkdir(parents=True, exist_ok=True)

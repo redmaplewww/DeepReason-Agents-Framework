@@ -13,16 +13,17 @@ DeepReason Agents Framework 是一个面向“重推理任务”的本地优先 
 3. [完整使用指南](docs/usage-guide.md)：快速了解运行、配置、知识库、工作流和二开流程。
 4. [工作流编辑器使用说明](docs/workflow-editor-usage.md)：专门学习如何编辑节点、连线、门禁、交付契约和 proposal。
 5. [RAG 索引指南](docs/rag-indexing-guide.md)：学习如何初始化知识库、切换 BM25/语义/Graph/Wiki 检索。
+6. [AgentOps 硬化审查记录](docs/agentops-hardening.md)：查看本次底座核查、修复项、验收命令和未覆盖的生产条件。
 
 ![DeepReason 调试控制台总览](docs/assets/deepreason-console-overview.png)
 
 ## 亮点
 
 - **多 Agent 架构**：coordinator、planner、retriever、reasoner、critic、memory、reviewer、configurator、code_modifier 等角色可配置、可扩展。
-- **动态工作流图**：工作流由 `configs/workflows/*.workflow.json` 驱动，支持节点、边、局部环、门禁、交付契约和检查点。
+- **动态工作流图**：工作流由 `configs/workflows/*.workflow.json` 驱动，运行时按边执行分支和受控重试，并暴露节点、边、门禁、交付契约和检查点。
 - **证据优先**：困难、学术、事实、技术判断和高风险任务会触发 RAG、论文/网页、用户经验等证据收集。
 - **RAG 可切换**：内置 BM25、语义近似、Graph 关系扩展、Wiki fallback，可单独切换或联用。
-- **长短期记忆边界**：短期记忆按 thread 保存上下文；长期记忆分区落盘，写入必须经过 gate；知识库和记忆明确隔离。
+- **长短期记忆边界**：短期记忆按 thread 保存上下文并可由本地 SessionStore 恢复；长期记忆分区落盘，写入必须经过 gate；知识库和记忆明确隔离。
 - **自进化但不自改核心**：失败案例、证据和反馈只生成 proposal，不直接修改技能、配置或记忆。
 - **可视化调试台**：实时查看 Agent 状态、工作流节点、证据、RAG 结果、门禁、记忆、技能、事件和原始 JSON。
 - **开发者友好**：CLI、Web UI、unittest、RAG benchmark、workflow/agent spec、code modifier adapter 都已内置。

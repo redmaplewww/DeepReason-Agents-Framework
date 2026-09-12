@@ -169,6 +169,9 @@ class WorkflowSpec:
     def execution_nodes(self) -> list[WorkflowNodeSpec]:
         return list(self.nodes)
 
+    def outgoing_edges(self, node_id: str) -> list[WorkflowEdgeSpec]:
+        return [edge for edge in self.edges if edge.from_node == node_id]
+
     def stage_agents(self) -> dict[str, str]:
         return {node.id: node.agent for node in self.nodes}
 

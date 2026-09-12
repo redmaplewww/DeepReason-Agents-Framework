@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,17 @@ class ShortTermConversationMemory:
         )
         if len(self._turns) > self.max_turns:
             self._turns = self._turns[-self.max_turns :]
+
+    def restore(self, turns: list[dict[str, Any]]) -> None:
+        for turn in turns:
+            user = str(turn.get("user", "")).strip()
+            assistant = str(turn.get("assistant", "")).strip()
+            if user or assistant:
+                self.append(
+                    user=user,
+                    assistant=assistant,
+                    run_id=str(turn.get("run_id") or "restored"),
+                )
 
     def snapshot(self, *, limit: int | None = None) -> list[dict[str, Any]]:
         turns = self._turns[-limit:] if limit else self._turns
@@ -135,7 +147,16 @@ class LongTermMemoryStore:
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     def _path_for(self, partition: str) -> Path:
-        return self.root / f"{partition}.jsonl"
+        value = str(partition).strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", value):
+            raise ValueError("memory partition must be a simple alphanumeric name")
+        root = self.root.resolve()
+        path = (root / f"{value}.jsonl").resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"memory partition escapes memory store: {partition}") from exc
+        return path
 
 
 def explicit_memory_candidate(message: str) -> dict[str, str] | None:
